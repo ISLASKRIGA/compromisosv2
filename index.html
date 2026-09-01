@@ -165,7 +165,7 @@
         </div>
 
         <div style="font-size: 0.85rem; color: var(--text-muted);">
-          Mostrando <strong id="lblRecordCount" style="color: #fff;">0</strong> contratos (haz clic en cualquier fila para desplegar su desglose por abajo)
+          Mostrando <strong id="lblRecordCount" style="color: #fff;">0</strong> contratos (haz clic en cualquier fila para ver el desglose)
         </div>
       </div>
 
@@ -174,7 +174,7 @@
         <table class="exec-table">
           <thead>
             <tr>
-              <th style="width: 30px; text-align: center;"></th>
+              <th style="width: 40px;"></th>
               <th data-sort="contrato">No. Contrato ↕</th>
               <th data-sort="proveedor">Proveedor ↕</th>
               <th data-sort="folios_count" style="text-align: center;">Folios ↕</th>
@@ -289,29 +289,6 @@
     </div>
 
   </main>
-
-  <!-- Executive Detail Modal Pop-up Window -->
-  <div id="detailModal" class="modal-backdrop" style="display: none;">
-    <div class="modal-container">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <span class="modal-icon">📑</span>
-          <div>
-            <h2 id="modalTitle" class="modal-title">Contrato 007-5300-01/2026</h2>
-            <p id="modalSubtitle" class="modal-subtitle">GRUPO TECNO-REAL S.A. DE C.V.</p>
-          </div>
-        </div>
-        <div class="modal-header-right">
-          <span id="modalStatusBadge" class="conclusion-badge badge-falta">FALTA RECURSO</span>
-          <button id="modalCloseBtn" class="modal-close-btn" title="Cerrar ventana">&times;</button>
-        </div>
-      </div>
-      
-      <div id="modalBody" class="modal-body">
-        <!-- Injected dynamically by JS -->
-      </div>
-    </div>
-  </div>
 
   <!-- Application Logic -->
   <script src="app.js"></script>

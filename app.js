@@ -6,7 +6,6 @@ let currentSearchQuery = '';
 let currentTolerance = 0.01; // Internal fixed precision threshold
 let currentSortCol = 'suficiencia';
 let currentSortAsc = false; // Default desc for numeric columns
-
 let expandedContracts = new Set();
 let expandedCommitments = new Set();
 
@@ -38,7 +37,7 @@ function setupEventListeners() {
   if (searchInput) {
     searchInput.addEventListener('input', (e) => {
       currentSearchQuery = e.target.value.toLowerCase().trim();
-      renderTableOnly();
+      renderTableAndKPIs();
     });
   }
 
@@ -50,7 +49,7 @@ function setupEventListeners() {
     });
   });
 
-  // KPI Card clicks (Interactive Filtering for Table Below)
+  // KPI Card clicks (Interactive Filtering)
   const cardSobrante = document.getElementById('cardSobranteTotal');
   if (cardSobrante) {
     cardSobrante.addEventListener('click', () => setFilterStatus('SOBRA RECURSO'));
@@ -141,11 +140,7 @@ function setFilterStatus(status) {
     }
   });
 
-  renderTableOnly();
-}
-
-function renderTableOnly() {
-  renderTable();
+  renderTableAndKPIs();
 }
 
 function downloadOriginalExcel() {
@@ -203,11 +198,18 @@ function getSortedContracts(contracts) {
 
 function renderAll() {
   renderConclusion();
-  renderKPIs(); // Static & Inamovibles
+  renderKPIs();
   renderCharts();
   renderTable();
   renderUnlinkedResources();
   renderAudit();
+}
+
+function renderTableAndKPIs() {
+  renderTable();
+  renderKPIs();
+  renderCharts();
+  renderConclusion();
 }
 
 function formatCurrency(val) {
@@ -260,35 +262,28 @@ function renderConclusion() {
   `;
 }
 
-// Render Static & Inamovible Macro KPI Cards
 function renderKPIs() {
   if (!fullData || !fullData.mandatory_control_values) return;
 
   const ctrl = fullData.mandatory_control_values;
   const totals = fullData.global_totals;
+  const filtered = getFilteredContracts();
 
-  // 1. Disponible SICOP Real (Inamovible)
   document.getElementById('kpiDisponibleSICOP').innerText = formatCurrency(ctrl.disponible_sicop_conciliado);
-
-  // 2. Estimación INPer por Ejercer (Inamovible)
   document.getElementById('kpiEstimacionINPer').innerText = formatCurrency(ctrl.estimacion_inper_conciliado);
 
-  // 3. Saldo Real de Suficiencia (Inamovible)
   const sufEl = document.getElementById('kpiSuficienciaNeta');
   sufEl.innerText = formatCurrency(ctrl.saldo_suficiencia_conciliado);
   sufEl.style.color = ctrl.saldo_suficiencia_conciliado >= 0 ? '#34d399' : '#f87171';
   document.getElementById('kpiSuficienciaSub').innerText = ctrl.saldo_suficiencia_conciliado >= 0 ? 'SOBRA RECURSO' : 'FALTA RECURSO';
 
-  // 4. Sobrante Total Acumulado (Inamovible)
   document.getElementById('kpiSobranteTotal').innerText = formatCurrency(totals.sobrante_total);
   document.getElementById('kpiSobranteSub').innerText = `${totals.count_sobra} Contratos con excedente`;
 
-  // 5. Faltante Total Acumulado (Inamovible)
   document.getElementById('kpiFaltanteTotal').innerText = formatCurrency(-totals.faltante_total);
   document.getElementById('kpiFaltanteSub').innerText = `${totals.count_falta} Contratos con insuficiencia`;
 
-  // 6. Universo Conciliado (Inamovible)
-  document.getElementById('kpiTotalContratos').innerText = fullData.metadata.total_conciliated_contracts;
+  document.getElementById('kpiTotalContratos').innerText = filtered.length;
   document.getElementById('kpiCompromisosSub').innerText = `${fullData.metadata.total_conciliated_commitments} Compromisos Conciliados`;
 }
 
@@ -441,13 +436,13 @@ function renderTable() {
     const badgeClass = c.estatus === 'SOBRA RECURSO' ? 'badge-sobra' : (c.estatus === 'FALTA RECURSO' ? 'badge-falta' : 'badge-equilibrado');
 
     html += `
-      <tr class="contract-row ${isExpanded ? 'expanded' : ''}" onclick="toggleContract('${c.contrato}')" data-contrato="${c.contrato}" title="Haz clic para desplegar el detalle por abajo">
+      <tr class="contract-row" onclick="toggleContract('${c.contrato}')" data-contrato="${c.contrato}">
         <td style="text-align: center;">
-          <span class="btn-toggle-icon ${isExpanded ? 'expanded' : ''}">▶</span>
+          <button class="btn-toggle">${isExpanded ? '▼' : '▶'}</button>
         </td>
         <td><strong>${c.contrato}</strong></td>
         <td title="${c.proveedor}" style="max-width: 220px; overflow: hidden; text-overflow: ellipsis;">${c.proveedor}</td>
-        <td style="text-align: center;"><span class="badge" style="background:#1e293b; color:#fff; border: 1px solid #334155;">${c.folios_count}</span></td>
+        <td style="text-align: center;"><span class="badge" style="background:#334155; color:#fff;">${c.folios_count}</span></td>
         <td style="text-align: right;">${formatCurrency(c.modificado_sicop)}</td>
         <td style="text-align: right;">${formatCurrency(c.modificado_inper)}</td>
         <td style="text-align: right; color: ${c.dif_modificado === 0 ? '#94a3b8' : '#fbbf24'};">${formatCurrency(c.dif_modificado)}</td>
@@ -464,8 +459,8 @@ function renderTable() {
       html += `
         <tr>
           <td colspan="13" style="padding: 0;">
-            <div class="subtable-wrapper">
-              <div class="subtable-header-title">
+            <div class="subtable-container">
+              <div class="subtable-header">
                 <span>📑</span> COMPROMISOS DEL CONTRATO ${c.contrato} (${c.compromisos.length} FOLIOS)
               </div>
               <table class="sub-table">
@@ -494,11 +489,11 @@ function renderTable() {
         const compBadgeClass = comp.estatus === 'SOBRA RECURSO' ? 'badge-sobra' : (comp.estatus === 'FALTA RECURSO' ? 'badge-falta' : 'badge-equilibrado');
 
         html += `
-          <tr class="commitment-row ${isCompExpanded ? 'expanded' : ''}" onclick="event.stopPropagation(); toggleCommitment('${compKey}')">
+          <tr class="commitment-row" onclick="toggleCommitment('${compKey}')">
             <td style="text-align: center;">
-              <span class="btn-toggle-icon ${isCompExpanded ? 'expanded' : ''}">▶</span>
+              <button class="btn-toggle">${isCompExpanded ? '▼' : '▶'}</button>
             </td>
-            <td><strong style="color: var(--color-sicop);">Folio ${comp.folio}</strong></td>
+            <td><strong>Folio ${comp.folio}</strong></td>
             <td title="${comp.servicio}" style="max-width: 250px; overflow: hidden; text-overflow: ellipsis;">${comp.servicio}</td>
             <td style="text-align: center;">${comp.partidas_count}</td>
             <td style="text-align: right;">${formatCurrency(comp.modificado_sicop)}</td>
@@ -516,13 +511,13 @@ function renderTable() {
           html += `
             <tr>
               <td colspan="12" style="padding: 0;">
-                <div class="partidas-container">
-                  <div class="partidas-header">
+                <div style="background: #111827; padding: 10px 16px 14px 40px;">
+                  <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; margin-bottom: 6px;">
                     📌 DESGLOSE DE PARTIDAS PRESUPUESTALES SICOP (FOLIO ${comp.folio})
                   </div>
-                  <table class="sub-table" style="background: #0f172a;">
+                  <table class="sub-table" style="background: #1f2937;">
                     <thead>
-                      <tr style="background: #090d16;">
+                      <tr style="background: #111827;">
                         <th>Fila Excel</th>
                         <th>PTDA</th>
                         <th>Clave Programática (F-FN-SF-RG-AI-PP)</th>
@@ -540,9 +535,9 @@ function renderTable() {
             html += `
               <tr>
                 <td>Row ${ptda.row_id}</td>
-                <td><strong style="color: #fff;">${ptda.ptda}</strong></td>
-                <td><code class="prog-key">${ptda.clave_programatica}</code></td>
-                <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;" title="${ptda.bien_servicio}">${ptda.bien_servicio}</td>
+                <td><strong>${ptda.ptda}</strong></td>
+                <td><code>${ptda.clave_programatica}</code></td>
+                <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${ptda.bien_servicio}</td>
                 <td style="text-align: right;">${formatCurrency(ptda.modificado_sicop)}</td>
                 <td style="text-align: right;">${formatCurrency(ptda.pagado_sicop)}</td>
                 <td style="text-align: right; font-weight: 600; color: var(--color-sicop);">${formatCurrency(ptda.disponible_sicop)}</td>
