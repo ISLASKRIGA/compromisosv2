@@ -126,23 +126,6 @@ function setupEventListeners() {
   if (btnExportExcel) {
     btnExportExcel.addEventListener('click', downloadOriginalExcel);
   }
-
-  // Modal Close Events
-  const modalCloseBtn = document.getElementById('modalCloseBtn');
-  if (modalCloseBtn) {
-    modalCloseBtn.addEventListener('click', closeModal);
-  }
-
-  const modalBackdrop = document.getElementById('detailModal');
-  if (modalBackdrop) {
-    modalBackdrop.addEventListener('click', (e) => {
-      if (e.target === modalBackdrop) closeModal();
-    });
-  }
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeModal();
-  });
 }
 
 function setFilterStatus(status) {
@@ -458,13 +441,13 @@ function renderTable() {
     const badgeClass = c.estatus === 'SOBRA RECURSO' ? 'badge-sobra' : (c.estatus === 'FALTA RECURSO' ? 'badge-falta' : 'badge-equilibrado');
 
     html += `
-      <tr class="contract-row" onclick="toggleContract('${c.contrato}')" data-contrato="${c.contrato}" title="Haz clic para abrir el desglose por abajo">
+      <tr class="contract-row ${isExpanded ? 'expanded' : ''}" onclick="toggleContract('${c.contrato}')" data-contrato="${c.contrato}" title="Haz clic para desplegar el detalle por abajo">
         <td style="text-align: center;">
-          <button class="btn-toggle">${isExpanded ? '▼' : '▶'}</button>
+          <span class="btn-toggle-icon ${isExpanded ? 'expanded' : ''}">▶</span>
         </td>
         <td><strong>${c.contrato}</strong></td>
         <td title="${c.proveedor}" style="max-width: 220px; overflow: hidden; text-overflow: ellipsis;">${c.proveedor}</td>
-        <td style="text-align: center;"><span class="badge" style="background:#334155; color:#fff;">${c.folios_count}</span></td>
+        <td style="text-align: center;"><span class="badge" style="background:#1e293b; color:#fff; border: 1px solid #334155;">${c.folios_count}</span></td>
         <td style="text-align: right;">${formatCurrency(c.modificado_sicop)}</td>
         <td style="text-align: right;">${formatCurrency(c.modificado_inper)}</td>
         <td style="text-align: right; color: ${c.dif_modificado === 0 ? '#94a3b8' : '#fbbf24'};">${formatCurrency(c.dif_modificado)}</td>
@@ -481,8 +464,8 @@ function renderTable() {
       html += `
         <tr>
           <td colspan="13" style="padding: 0;">
-            <div class="subtable-container">
-              <div class="subtable-header">
+            <div class="subtable-wrapper">
+              <div class="subtable-header-title">
                 <span>📑</span> COMPROMISOS DEL CONTRATO ${c.contrato} (${c.compromisos.length} FOLIOS)
               </div>
               <table class="sub-table">
@@ -511,11 +494,11 @@ function renderTable() {
         const compBadgeClass = comp.estatus === 'SOBRA RECURSO' ? 'badge-sobra' : (comp.estatus === 'FALTA RECURSO' ? 'badge-falta' : 'badge-equilibrado');
 
         html += `
-          <tr class="commitment-row" onclick="event.stopPropagation(); toggleCommitment('${compKey}')">
+          <tr class="commitment-row ${isCompExpanded ? 'expanded' : ''}" onclick="event.stopPropagation(); toggleCommitment('${compKey}')">
             <td style="text-align: center;">
-              <button class="btn-toggle">${isCompExpanded ? '▼' : '▶'}</button>
+              <span class="btn-toggle-icon ${isCompExpanded ? 'expanded' : ''}">▶</span>
             </td>
-            <td><strong>Folio ${comp.folio}</strong></td>
+            <td><strong style="color: var(--color-sicop);">Folio ${comp.folio}</strong></td>
             <td title="${comp.servicio}" style="max-width: 250px; overflow: hidden; text-overflow: ellipsis;">${comp.servicio}</td>
             <td style="text-align: center;">${comp.partidas_count}</td>
             <td style="text-align: right;">${formatCurrency(comp.modificado_sicop)}</td>
@@ -533,13 +516,13 @@ function renderTable() {
           html += `
             <tr>
               <td colspan="12" style="padding: 0;">
-                <div style="background: #111827; padding: 10px 16px 14px 40px;">
-                  <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; margin-bottom: 6px;">
+                <div class="partidas-container">
+                  <div class="partidas-header">
                     📌 DESGLOSE DE PARTIDAS PRESUPUESTALES SICOP (FOLIO ${comp.folio})
                   </div>
-                  <table class="sub-table" style="background: #1f2937;">
+                  <table class="sub-table" style="background: #0f172a;">
                     <thead>
-                      <tr style="background: #111827;">
+                      <tr style="background: #090d16;">
                         <th>Fila Excel</th>
                         <th>PTDA</th>
                         <th>Clave Programática (F-FN-SF-RG-AI-PP)</th>
@@ -557,9 +540,9 @@ function renderTable() {
             html += `
               <tr>
                 <td>Row ${ptda.row_id}</td>
-                <td><strong>${ptda.ptda}</strong></td>
-                <td><code>${ptda.clave_programatica}</code></td>
-                <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${ptda.bien_servicio}</td>
+                <td><strong style="color: #fff;">${ptda.ptda}</strong></td>
+                <td><code class="prog-key">${ptda.clave_programatica}</code></td>
+                <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;" title="${ptda.bien_servicio}">${ptda.bien_servicio}</td>
                 <td style="text-align: right;">${formatCurrency(ptda.modificado_sicop)}</td>
                 <td style="text-align: right;">${formatCurrency(ptda.pagado_sicop)}</td>
                 <td style="text-align: right; font-weight: 600; color: var(--color-sicop);">${formatCurrency(ptda.disponible_sicop)}</td>
@@ -608,11 +591,6 @@ window.toggleCommitment = function(compKey) {
   }
   renderTable();
 };
-
-function closeModal() {
-  const modal = document.getElementById('detailModal');
-  if (modal) modal.style.display = 'none';
-}
 
 function renderUnlinkedResources() {
   if (!fullData || !fullData.unlinked_resources) return;
