@@ -3,7 +3,7 @@
 let fullData = null;
 let currentStatusFilter = 'ALL';
 let currentSearchQuery = '';
-let currentTolerance = 0.01;
+let currentTolerance = 0.01; // Internal fixed precision threshold
 let currentSortCol = 'suficiencia';
 let currentSortAsc = false; // Default desc for numeric columns
 let expandedContracts = new Set();
@@ -34,18 +34,12 @@ async function initApp() {
 function setupEventListeners() {
   // Search input
   const searchInput = document.getElementById('searchInput');
-  searchInput.addEventListener('input', (e) => {
-    currentSearchQuery = e.target.value.toLowerCase().trim();
-    renderTableAndKPIs();
-  });
-
-  // Tolerance input
-  const toleranceInput = document.getElementById('toleranceInput');
-  toleranceInput.addEventListener('change', (e) => {
-    currentTolerance = parseFloat(e.target.value) || 0.0;
-    recalculateStatuses();
-    renderAll();
-  });
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      currentSearchQuery = e.target.value.toLowerCase().trim();
+      renderTableAndKPIs();
+    });
+  }
 
   // Filter status buttons
   const filterBtns = document.querySelectorAll('.filter-btn');
@@ -89,9 +83,11 @@ function setupEventListeners() {
 
   // Ranking selector
   const rankingSelect = document.getElementById('rankingSelect');
-  rankingSelect.addEventListener('change', () => {
-    renderRankingChart();
-  });
+  if (rankingSelect) {
+    rankingSelect.addEventListener('change', () => {
+      renderRankingChart();
+    });
+  }
 
   // Export Excel Original
   const btnExportExcel = document.getElementById('btnExportExcel');
