@@ -7,6 +7,9 @@ let currentTolerance = 0.01; // Internal fixed precision threshold
 let currentSortCol = 'suficiencia';
 let currentSortAsc = false; // Default desc for numeric columns
 
+let expandedContracts = new Set();
+let expandedCommitments = new Set();
+
 let chartSufficiency = null;
 let chartDistribution = null;
 let chartRanking = null;
@@ -451,12 +454,13 @@ function renderTable() {
   let html = '';
 
   sorted.forEach(c => {
+    const isExpanded = expandedContracts.has(c.contrato);
     const badgeClass = c.estatus === 'SOBRA RECURSO' ? 'badge-sobra' : (c.estatus === 'FALTA RECURSO' ? 'badge-falta' : 'badge-equilibrado');
 
     html += `
-      <tr class="contract-row" onclick="openContractModal('${c.contrato}')" data-contrato="${c.contrato}" title="Haz clic para abrir la ventana de detalle de este contrato">
+      <tr class="contract-row" onclick="toggleContract('${c.contrato}')" data-contrato="${c.contrato}" title="Haz clic para abrir el desglose por abajo">
         <td style="text-align: center;">
-          <button class="btn-open-detail">🔍 Ver</button>
+          <button class="btn-toggle">${isExpanded ? '▼' : '▶'}</button>
         </td>
         <td><strong>${c.contrato}</strong></td>
         <td title="${c.proveedor}" style="max-width: 220px; overflow: hidden; text-overflow: ellipsis;">${c.proveedor}</td>
@@ -472,126 +476,137 @@ function renderTable() {
         <td style="text-align: center;"><span class="badge ${badgeClass}">${c.estatus}</span></td>
       </tr>
     `;
+
+    if (isExpanded) {
+      html += `
+        <tr>
+          <td colspan="13" style="padding: 0;">
+            <div class="subtable-container">
+              <div class="subtable-header">
+                <span>📑</span> COMPROMISOS DEL CONTRATO ${c.contrato} (${c.compromisos.length} FOLIOS)
+              </div>
+              <table class="sub-table">
+                <thead>
+                  <tr>
+                    <th style="width: 30px;"></th>
+                    <th>Folio Compromiso</th>
+                    <th>Área Solicitante / Servicio</th>
+                    <th style="text-align: center;">Partidas</th>
+                    <th style="text-align: right;">Modif. SICOP</th>
+                    <th style="text-align: right;">Modif. INPer</th>
+                    <th style="text-align: right;">Pagado SICOP</th>
+                    <th style="text-align: right;">Pagado INPer</th>
+                    <th style="text-align: right; color: var(--color-sicop);">Disponible SICOP</th>
+                    <th style="text-align: right; color: var(--color-inper);">Estimación INPer</th>
+                    <th style="text-align: right;">Suficiencia</th>
+                    <th style="text-align: center;">Estatus</th>
+                  </tr>
+                </thead>
+                <tbody>
+      `;
+
+      c.compromisos.forEach(comp => {
+        const compKey = `${c.contrato}_${comp.folio}`;
+        const isCompExpanded = expandedCommitments.has(compKey);
+        const compBadgeClass = comp.estatus === 'SOBRA RECURSO' ? 'badge-sobra' : (comp.estatus === 'FALTA RECURSO' ? 'badge-falta' : 'badge-equilibrado');
+
+        html += `
+          <tr class="commitment-row" onclick="event.stopPropagation(); toggleCommitment('${compKey}')">
+            <td style="text-align: center;">
+              <button class="btn-toggle">${isCompExpanded ? '▼' : '▶'}</button>
+            </td>
+            <td><strong>Folio ${comp.folio}</strong></td>
+            <td title="${comp.servicio}" style="max-width: 250px; overflow: hidden; text-overflow: ellipsis;">${comp.servicio}</td>
+            <td style="text-align: center;">${comp.partidas_count}</td>
+            <td style="text-align: right;">${formatCurrency(comp.modificado_sicop)}</td>
+            <td style="text-align: right;">${formatCurrency(comp.modificado_inper)}</td>
+            <td style="text-align: right;">${formatCurrency(comp.pagado_sicop)}</td>
+            <td style="text-align: right;">${formatCurrency(comp.pagado_inper)}</td>
+            <td style="text-align: right; font-weight: 600; color: var(--color-sicop);">${formatCurrency(comp.disponible_sicop)}</td>
+            <td style="text-align: right; font-weight: 600; color: var(--color-inper);">${formatCurrency(comp.estimacion_inper)}</td>
+            <td style="text-align: right; font-weight: 700; color: ${comp.suficiencia >= 0 ? '#34d399' : '#f87171'};">${formatCurrency(comp.suficiencia)}</td>
+            <td style="text-align: center;"><span class="badge ${compBadgeClass}">${comp.estatus}</span></td>
+          </tr>
+        `;
+
+        if (isCompExpanded) {
+          html += `
+            <tr>
+              <td colspan="12" style="padding: 0;">
+                <div style="background: #111827; padding: 10px 16px 14px 40px;">
+                  <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; margin-bottom: 6px;">
+                    📌 DESGLOSE DE PARTIDAS PRESUPUESTALES SICOP (FOLIO ${comp.folio})
+                  </div>
+                  <table class="sub-table" style="background: #1f2937;">
+                    <thead>
+                      <tr style="background: #111827;">
+                        <th>Fila Excel</th>
+                        <th>PTDA</th>
+                        <th>Clave Programática (F-FN-SF-RG-AI-PP)</th>
+                        <th>Bien o Servicio Desglosado</th>
+                        <th style="text-align: right;">Modificado SICOP</th>
+                        <th style="text-align: right;">Pagado SICOP</th>
+                        <th style="text-align: right; color: var(--color-sicop);">Disponible SICOP</th>
+                        <th>Observaciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+          `;
+
+          comp.partidas.forEach(ptda => {
+            html += `
+              <tr>
+                <td>Row ${ptda.row_id}</td>
+                <td><strong>${ptda.ptda}</strong></td>
+                <td><code>${ptda.clave_programatica}</code></td>
+                <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${ptda.bien_servicio}</td>
+                <td style="text-align: right;">${formatCurrency(ptda.modificado_sicop)}</td>
+                <td style="text-align: right;">${formatCurrency(ptda.pagado_sicop)}</td>
+                <td style="text-align: right; font-weight: 600; color: var(--color-sicop);">${formatCurrency(ptda.disponible_sicop)}</td>
+                <td style="font-size: 0.75rem; color: var(--text-muted);">${ptda.observaciones || '-'}</td>
+              </tr>
+            `;
+          });
+
+          html += `
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+            </tr>
+          `;
+        }
+      });
+
+      html += `
+                </tbody>
+              </table>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
   });
 
   tbody.innerHTML = html;
 }
 
-// Open Executive Detail Modal Window
-window.openContractModal = function(contratoNum) {
-  if (!fullData || !fullData.contracts) return;
-
-  const c = fullData.contracts.find(item => item.contrato === contratoNum);
-  if (!c) return;
-
-  document.getElementById('modalTitle').innerText = `Contrato ${c.contrato}`;
-  document.getElementById('modalSubtitle').innerText = c.proveedor !== 'N/A' ? c.proveedor : c.servicio;
-
-  const badgeEl = document.getElementById('modalStatusBadge');
-  const badgeClass = c.estatus === 'SOBRA RECURSO' ? 'badge-sobra' : (c.estatus === 'FALTA RECURSO' ? 'badge-falta' : 'badge-equilibrado');
-  badgeEl.className = `conclusion-badge ${badgeClass}`;
-  badgeEl.innerText = c.estatus;
-
-  const modalBody = document.getElementById('modalBody');
-
-  let html = `
-    <!-- Executive KPI Grid inside Modal -->
-    <div class="modal-kpi-grid">
-      <div class="modal-kpi-card" style="border-left: 3px solid var(--color-sicop);">
-        <div class="modal-kpi-label">Disponible SICOP (AT)</div>
-        <div class="modal-kpi-val" style="color: var(--color-sicop);">${formatCurrency(c.disponible_sicop)}</div>
-      </div>
-      <div class="modal-kpi-card" style="border-left: 3px solid var(--color-inper);">
-        <div class="modal-kpi-label">Estimación INPer (AV)</div>
-        <div class="modal-kpi-val" style="color: var(--color-inper);">${formatCurrency(c.estimacion_inper)}</div>
-      </div>
-      <div class="modal-kpi-card" style="border-left: 3px solid ${c.suficiencia >= 0 ? '#34d399' : '#f87171'};">
-        <div class="modal-kpi-label">Saldo de Suficiencia</div>
-        <div class="modal-kpi-val" style="color: ${c.suficiencia >= 0 ? '#34d399' : '#f87171'};">${formatCurrency(c.suficiencia)}</div>
-      </div>
-      <div class="modal-kpi-card">
-        <div class="modal-kpi-label">Modificado (SICOP / INPer)</div>
-        <div class="modal-kpi-val" style="font-size: 0.95rem;">${formatCurrency(c.modificado_sicop)} / ${formatCurrency(c.modificado_inper)}</div>
-      </div>
-      <div class="modal-kpi-card">
-        <div class="modal-kpi-label">Pagado (SICOP / INPer)</div>
-        <div class="modal-kpi-val" style="font-size: 0.95rem;">${formatCurrency(c.pagado_sicop)} / ${formatCurrency(c.pagado_inper)}</div>
-      </div>
-    </div>
-
-    <!-- Commitments Section -->
-    <div class="modal-section-title">
-      <span>📑</span> COMPROMISOS VINCULADOS A ESTE CONTRATO (${c.compromisos.length} FOLIOS)
-    </div>
-  `;
-
-  c.compromisos.forEach((comp, idx) => {
-    const compBadgeClass = comp.estatus === 'SOBRA RECURSO' ? 'badge-sobra' : (comp.estatus === 'FALTA RECURSO' ? 'badge-falta' : 'badge-equilibrado');
-
-    html += `
-      <div class="accordion-item">
-        <div class="accordion-header" onclick="toggleModalAccordion('acc_${idx}')">
-          <div>
-            <strong style="color: var(--color-sicop);">Folio ${comp.folio}</strong> — 
-            <span style="color: var(--text-muted);">${comp.servicio}</span>
-          </div>
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <span style="color: var(--color-sicop); font-weight:700;">AT: ${formatCurrency(comp.disponible_sicop)}</span>
-            <span style="color: var(--color-inper); font-weight:700;">AV: ${formatCurrency(comp.estimacion_inper)}</span>
-            <span class="badge ${compBadgeClass}">${comp.estatus}</span>
-            <span style="color: #94a3b8; font-size: 0.8rem;">▼</span>
-          </div>
-        </div>
-        <div id="acc_${idx}" class="accordion-content" style="display: ${idx === 0 ? 'block' : 'none'};">
-          <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; margin-bottom: 8px;">
-            DESGLOSE DE PARTIDAS PRESUPUESTALES SICOP (${comp.partidas.length} CLAVES)
-          </div>
-          <table class="sub-table" style="width: 100%;">
-            <thead>
-              <tr>
-                <th>Fila</th>
-                <th>PTDA</th>
-                <th>Clave Programática (F-FN-SF-RG-AI-PP)</th>
-                <th>Bien o Servicio Desglosado</th>
-                <th style="text-align: right;">Modif. SICOP</th>
-                <th style="text-align: right;">Pagado SICOP</th>
-                <th style="text-align: right; color: var(--color-sicop);">Disponible SICOP</th>
-              </tr>
-            </thead>
-            <tbody>
-    `;
-
-    comp.partidas.forEach(ptda => {
-      html += `
-        <tr>
-          <td>Row ${ptda.row_id}</td>
-          <td><strong>${ptda.ptda}</strong></td>
-          <td><code>${ptda.clave_programatica}</code></td>
-          <td style="max-width: 280px; overflow: hidden; text-overflow: ellipsis;" title="${ptda.bien_servicio}">${ptda.bien_servicio}</td>
-          <td style="text-align: right;">${formatCurrency(ptda.modificado_sicop)}</td>
-          <td style="text-align: right;">${formatCurrency(ptda.pagado_sicop)}</td>
-          <td style="text-align: right; font-weight: 700; color: var(--color-sicop);">${formatCurrency(ptda.disponible_sicop)}</td>
-        </tr>
-      `;
-    });
-
-    html += `
-            </tbody>
-          </table>
-        </div>
-      </div>
-    `;
-  });
-
-  modalBody.innerHTML = html;
-  document.getElementById('detailModal').style.display = 'flex';
+window.toggleContract = function(contrato) {
+  if (expandedContracts.has(contrato)) {
+    expandedContracts.delete(contrato);
+  } else {
+    expandedContracts.add(contrato);
+  }
+  renderTable();
 };
 
-window.toggleModalAccordion = function(accId) {
-  const el = document.getElementById(accId);
-  if (el) {
-    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+window.toggleCommitment = function(compKey) {
+  if (expandedCommitments.has(compKey)) {
+    expandedCommitments.delete(compKey);
+  } else {
+    expandedCommitments.add(compKey);
   }
+  renderTable();
 };
 
 function closeModal() {
