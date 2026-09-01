@@ -35,7 +35,7 @@ function setupEventListeners() {
   if (searchInput) {
     searchInput.addEventListener('input', (e) => {
       currentSearchQuery = e.target.value.toLowerCase().trim();
-      renderTableAndKPIs();
+      renderTableOnly();
     });
   }
 
@@ -47,7 +47,7 @@ function setupEventListeners() {
     });
   });
 
-  // KPI Card clicks (Interactive Filtering)
+  // KPI Card clicks (Interactive Filtering for Table Below)
   const cardSobrante = document.getElementById('cardSobranteTotal');
   if (cardSobrante) {
     cardSobrante.addEventListener('click', () => setFilterStatus('SOBRA RECURSO'));
@@ -155,7 +155,11 @@ function setFilterStatus(status) {
     }
   });
 
-  renderTableAndKPIs();
+  renderTableOnly();
+}
+
+function renderTableOnly() {
+  renderTable();
 }
 
 function downloadOriginalExcel() {
@@ -213,18 +217,11 @@ function getSortedContracts(contracts) {
 
 function renderAll() {
   renderConclusion();
-  renderKPIs();
+  renderKPIs(); // Static & Inamovibles
   renderCharts();
   renderTable();
   renderUnlinkedResources();
   renderAudit();
-}
-
-function renderTableAndKPIs() {
-  renderTable();
-  renderKPIs();
-  renderCharts();
-  renderConclusion();
 }
 
 function formatCurrency(val) {
@@ -277,28 +274,35 @@ function renderConclusion() {
   `;
 }
 
+// Render Static & Inamovible Macro KPI Cards
 function renderKPIs() {
   if (!fullData || !fullData.mandatory_control_values) return;
 
   const ctrl = fullData.mandatory_control_values;
   const totals = fullData.global_totals;
-  const filtered = getFilteredContracts();
 
+  // 1. Disponible SICOP Real (Inamovible)
   document.getElementById('kpiDisponibleSICOP').innerText = formatCurrency(ctrl.disponible_sicop_conciliado);
+
+  // 2. Estimación INPer por Ejercer (Inamovible)
   document.getElementById('kpiEstimacionINPer').innerText = formatCurrency(ctrl.estimacion_inper_conciliado);
 
+  // 3. Saldo Real de Suficiencia (Inamovible)
   const sufEl = document.getElementById('kpiSuficienciaNeta');
   sufEl.innerText = formatCurrency(ctrl.saldo_suficiencia_conciliado);
   sufEl.style.color = ctrl.saldo_suficiencia_conciliado >= 0 ? '#34d399' : '#f87171';
   document.getElementById('kpiSuficienciaSub').innerText = ctrl.saldo_suficiencia_conciliado >= 0 ? 'SOBRA RECURSO' : 'FALTA RECURSO';
 
+  // 4. Sobrante Total Acumulado (Inamovible)
   document.getElementById('kpiSobranteTotal').innerText = formatCurrency(totals.sobrante_total);
   document.getElementById('kpiSobranteSub').innerText = `${totals.count_sobra} Contratos con excedente`;
 
+  // 5. Faltante Total Acumulado (Inamovible)
   document.getElementById('kpiFaltanteTotal').innerText = formatCurrency(-totals.faltante_total);
   document.getElementById('kpiFaltanteSub').innerText = `${totals.count_falta} Contratos con insuficiencia`;
 
-  document.getElementById('kpiTotalContratos').innerText = filtered.length;
+  // 6. Universo Conciliado (Inamovible)
+  document.getElementById('kpiTotalContratos').innerText = fullData.metadata.total_conciliated_contracts;
   document.getElementById('kpiCompromisosSub').innerText = `${fullData.metadata.total_conciliated_commitments} Compromisos Conciliados`;
 }
 
