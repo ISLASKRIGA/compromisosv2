@@ -93,9 +93,29 @@ function setupEventListeners() {
     renderRankingChart();
   });
 
+  // Export Excel Original
+  const btnExportExcel = document.getElementById('btnExportExcel');
+  if (btnExportExcel) {
+    btnExportExcel.addEventListener('click', downloadOriginalExcel);
+  }
+
   // Export CSV
-  const btnExport = document.getElementById('btnExportCSV');
-  btnExport.addEventListener('click', exportToCSV);
+  const btnExportCSV = document.getElementById('btnExportCSV');
+  if (btnExportCSV) {
+    btnExportCSV.addEventListener('click', exportToCSV);
+  }
+}
+
+function downloadOriginalExcel() {
+  const excelFilename = 'Pruebareporteejecutivo_validado_PCOM_CORREGIDO_DESGLOSE (2).xlsx';
+  const encodedPath = encodeURIComponent(excelFilename);
+  
+  const link = document.createElement('a');
+  link.href = encodedPath;
+  link.download = excelFilename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 function recalculateStatuses() {
@@ -209,9 +229,9 @@ function renderConclusion() {
   const ctrl = fullData.mandatory_control_values;
   const totals = fullData.global_totals;
 
-  const disp = ctrl.disponible_sicop_conciliado; // $388,037,428.57
-  const est = ctrl.estimacion_inper_conciliado;   // $201,310,252.66
-  const suf = ctrl.saldo_suficiencia_conciliado;  // +$186,727,175.91
+  const disp = ctrl.disponible_sicop_conciliado;
+  const est = ctrl.estimacion_inper_conciliado;
+  const suf = ctrl.saldo_suficiencia_conciliado;
 
   const badgeEl = document.getElementById('conclusionStatusBadge');
   const bodyEl = document.getElementById('conclusionBody');
