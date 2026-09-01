@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>INPer — Conciliador Financiero SICOP vs. INPer</title>
+  <title>INPer — Visualizador Ejecutivo de Conciliación SICOP vs. INPer</title>
 
   <!-- Google Fonts Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,16 +30,6 @@
       </div>
 
       <div class="nav-controls">
-        <!-- Analysis Mode Selector -->
-        <div style="background: rgba(255, 255, 255, 0.05); padding: 4px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; gap: 4px;">
-          <button id="btnModeDedup" class="tab-btn active" style="padding: 6px 12px; font-size: 0.8rem;" title="Recomendado por expertos: Deduplica la repetición de renglones presupuestales en SICOP">
-            🛡️ Modo Financiero Real (Deduplicado)
-          </button>
-          <button id="btnModeRaw" class="tab-btn" style="padding: 6px 12px; font-size: 0.8rem;" title="Suma bruta tabular de todas las filas del Excel sin deduplicar">
-            📋 Modo Bruto Tabular (Excel)
-          </button>
-        </div>
-
         <input type="text" id="searchInput" class="search-input" placeholder="🔍 Buscar contrato, proveedor, UR, folio...">
         
         <div class="tolerance-control">
@@ -57,38 +47,28 @@
   <!-- Main Container -->
   <main class="main-container">
 
-    <!-- Health Financial Expert Audit Alert -->
-    <div id="expertAlert" class="conclusion-card" style="border-left-color: #f59e0b; background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(15, 23, 42, 0.95) 100%); display: none;">
-      <div class="conclusion-header">
-        <div class="conclusion-title" style="color: #fbbf24;">
-          <span>🩺</span> NOTA AUDITORA DE FINANZAS EN SALUD: DUPLICACIÓN ESTRUCTURAL DETECTADA
-        </div>
-      </div>
-      <div class="conclusion-body" style="font-size: 0.9rem;">
-        Se ha detectado que en contratos como <strong>007-5300-01/2026 (Limpieza)</strong> y <strong>005-5320-01/2026</strong>, el reporte original de Excel incluye desgloses repetidos de partidas en SICOP (por ejemplo, repite las 5 claves presupuestales del compromiso 9 veces).<br>
-        En el <strong>Modo Financiero Real (Deduplicado)</strong> se eliminan las partidas clonadas, revelando que el contrato 007-5300-01/2026 está <strong>CONCILIADO AL 100%</strong> en <strong>$30,877,207.00</strong> entre SICOP e INPer.
-      </div>
-    </div>
-
-    <!-- Executive Conclusion Banner -->
+    <!-- Mandatory Executive Conclusion Banner -->
     <section class="conclusion-card">
       <div class="conclusion-header">
         <div class="conclusion-title">
-          <span>📊</span> DIAGNÓSTICO FINANCIERO Y CONCLUSIÓN EJECUTIVA AUTOMÁTICA
+          <span>📊</span> CONCLUSIÓN EJECUTIVA DE SUFICIENCIA PRESUPUESTAL (UNIVERSO CONCILIADO)
         </div>
         <div id="conclusionStatusBadge" class="conclusion-badge badge-sobra">
-          SOBRA RECURSO
+          SOBRA RECURSO POR $186,727,175.91
         </div>
       </div>
       <div id="conclusionBody" class="conclusion-body">
-        Cargando datos y generando conclusión ejecutiva...
+        Cargando datos y verificando valores de control obligatorios...
       </div>
     </section>
 
     <!-- Navigation Tabs -->
     <div class="tabs-container">
       <button class="tab-btn active" data-tab="dashboard">
-        📈 Tablero Ejecutivo & Gráficas
+        📈 Tablero Ejecutivo (Universo Conciliado)
+      </button>
+      <button class="tab-btn" data-tab="unlinked">
+        📌 Recursos Pendientes de Vinculación <span id="unlinkedCountBadge" class="badge-count">0</span>
       </button>
       <button class="tab-btn" data-tab="audit">
         ⚠️ Registros que Requieren Revisión <span id="auditCountBadge" class="badge-count">0</span>
@@ -98,24 +78,24 @@
     <!-- TAB 1: DASHBOARD & TABLE -->
     <div id="tabDashboard">
       
-      <!-- KPI Grid -->
+      <!-- Mandatory KPI Grid -->
       <div class="kpi-grid">
-        <div class="kpi-card">
-          <div class="kpi-label">Recurso Disponible SICOP</div>
-          <div id="kpiDisponibleSICOP" class="kpi-value">$0.00</div>
-          <div class="kpi-subtext">Fuente fidedigna (AT)</div>
+        <div class="kpi-card" style="border-left: 4px solid var(--color-sicop);">
+          <div class="kpi-label">Disponible SICOP Conciliado</div>
+          <div id="kpiDisponibleSICOP" class="kpi-value" style="color: var(--color-sicop);">$388,037,428.57</div>
+          <div class="kpi-subtext">Valor de Control Obligatorio (AT)</div>
         </div>
 
-        <div class="kpi-card">
+        <div class="kpi-card" style="border-left: 4px solid var(--color-inper);">
           <div class="kpi-label">Estimación INPer por Ejercer</div>
-          <div id="kpiEstimacionINPer" class="kpi-value">$0.00</div>
-          <div class="kpi-subtext">Captura manual (AV)</div>
+          <div id="kpiEstimacionINPer" class="kpi-value" style="color: var(--color-inper);">$201,310,252.66</div>
+          <div class="kpi-subtext">Valor de Control Obligatorio (AV)</div>
         </div>
 
-        <div class="kpi-card">
-          <div class="kpi-label">Suficiencia Neta Global</div>
-          <div id="kpiSuficienciaNeta" class="kpi-value">$0.00</div>
-          <div id="kpiSuficienciaSub" class="kpi-subtext">Disponible − Estimación</div>
+        <div class="kpi-card" style="border-left: 4px solid #10b981;">
+          <div class="kpi-label">Saldo de Suficiencia</div>
+          <div id="kpiSuficienciaNeta" class="kpi-value" style="color: #34d399;">+$186,727,175.91</div>
+          <div id="kpiSuficienciaSub" class="kpi-subtext">SOBRA RECURSO</div>
         </div>
 
         <div class="kpi-card">
@@ -131,9 +111,9 @@
         </div>
 
         <div class="kpi-card">
-          <div class="kpi-label">Contratos Analizados</div>
+          <div class="kpi-label">Universo Conciliado</div>
           <div id="kpiTotalContratos" class="kpi-value">0</div>
-          <div id="kpiCompromisosSub" class="kpi-subtext">0 Compromisos | 0 Partidas</div>
+          <div id="kpiCompromisosSub" class="kpi-subtext">0 Compromisos Conciliados</div>
         </div>
       </div>
 
@@ -219,7 +199,55 @@
 
     </div>
 
-    <!-- TAB 2: AUDIT & DATA QUALITY -->
+    <!-- TAB 2: UNLINKED RESOURCES -->
+    <div id="tabUnlinked" style="display: none;">
+      
+      <div class="conclusion-card" style="border-left-color: #a855f7;">
+        <div class="conclusion-header">
+          <div class="conclusion-title" style="color: #c084fc;">
+            <span>📌</span> RECURSOS PENDIENTES DE VINCULACIÓN (REGISTROS SIN FOLIO DE COMPROMISO G)
+          </div>
+        </div>
+        <div class="conclusion-body">
+          <p>
+            Conforme a la regla de control (Sección 14), los importes de registros que no cuentan con folio de compromiso (G) no se incorporan al saldo contractual conciliado. Permanecen visibles en esta sección independiente:
+          </p>
+          <ul style="margin-top: 8px; margin-left: 20px;">
+            <li><strong>Disponible SICOP sin Folio (AT sin G)</strong>: <span class="highlight-val highlight-neutral" id="lblUnlinkedAT">$1,193,384.26</span></li>
+            <li><strong>Estimación INPer sin Folio (AV sin G)</strong>: <span class="highlight-val highlight-neutral" id="lblUnlinkedAV">$78,597,294.20</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="audit-grid">
+        <div class="audit-card">
+          <div class="audit-card-title" style="color: #38bdf8;">
+            <span>📄</span> Caso A: Tiene Contrato (F) pero NO tiene Compromiso (G)
+          </div>
+          <div class="audit-card-desc">
+            Registros que cuentan con número de contrato formalizado en la columna F pero carecen de folio de compromiso asignado.
+          </div>
+          <div id="unlinkedCasoAList" class="audit-list">
+            <!-- Injected by JS -->
+          </div>
+        </div>
+
+        <div class="audit-card">
+          <div class="audit-card-title" style="color: #f87171;">
+            <span>❓</span> Caso B: Registro sin Contrato ni Compromiso (Sin F ni G)
+          </div>
+          <div class="audit-card-desc">
+            Registros huérfanos que no cuentan con número de contrato ni folio de compromiso en la hoja.
+          </div>
+          <div id="unlinkedCasoBList" class="audit-list">
+            <!-- Injected by JS -->
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB 3: AUDIT & DATA QUALITY -->
     <div id="tabAudit" style="display: none;">
       
       <div class="audit-grid">
@@ -228,7 +256,7 @@
             <span>⚠️</span> Registros en SICOP sin Captura INPer
           </div>
           <div class="audit-card-desc">
-            Compromisos que tienen importe registrado en SICOP pero donde INPer no ha capturado valores de modificado/estimación.
+            Compromisos con recurso en SICOP donde INPer no registra modificado ni estimación.
           </div>
           <div id="auditSicopOnlyList" class="audit-list">
             <!-- Injected by JS -->
@@ -240,7 +268,7 @@
             <span>⚠️</span> Registros en INPer sin Registro en SICOP
           </div>
           <div class="audit-card-desc">
-            Compromisos que tienen estimación manual capturada por INPer pero cuyo compromiso no existe o está en 0 en SICOP.
+            Compromisos con estimación manual capturada por INPer pero cuyo compromiso no existe en SICOP.
           </div>
           <div id="auditInperOnlyList" class="audit-list">
             <!-- Injected by JS -->
@@ -252,7 +280,7 @@
             <span>🔍</span> Contratos con Discrepancias Extremas (> $1,000,000)
           </div>
           <div class="audit-card-desc">
-            Contratos donde la suficiencia presupuestal o la diferencia de modificado supera $1,000,000. Requieren revisión prioritaria.
+            Contratos donde la suficiencia presupuestal o la diferencia de modificado supera $1,000,000.
           </div>
           <div id="auditExtremeList" class="audit-list">
             <!-- Injected by JS -->

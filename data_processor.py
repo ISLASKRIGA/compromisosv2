@@ -7,20 +7,20 @@ def process_excel(excel_path, output_json_path):
     print(f"Cargando archivo Excel: {excel_path}")
     df = pd.read_excel(excel_path, sheet_name='Base de datos origen')
     
-    # Mapeo explícito de columnas
-    col_no = df.columns[0]        # A: No.
-    col_ur = df.columns[1]        # B: UR
+    # Mapeo explícito de columnas según especificación funcional:
+    col_no = df.columns[0]          # A: No.
+    col_ur = df.columns[1]          # B: UR
     col_solicitante = df.columns[2] # C: Área solicitante
-    col_servicio = df.columns[3] # D: Descripción del bien o servicio
-    col_con_contrato = df.columns[4] # E: Con contrato / Sin contrato
-    col_contrato = df.columns[5] # F: No. de contrato
-    col_folio = df.columns[6]    # G: FOLIO DEL COMPROMISO
-    col_anexo = df.columns[7]    # H: Número de anexo
-    col_proveedor = df.columns[8] # I: Proveedor
-    col_rfc = df.columns[9]      # J: RFC
-    col_ptda = df.columns[18]    # S: PTDA
+    col_servicio = df.columns[3]    # D: Descripción del bien o servicio
+    col_con_contrato = df.columns[4]# E: Con contrato / Sin contrato
+    col_contrato = df.columns[5]    # F: No. de contrato
+    col_folio = df.columns[6]       # G: FOLIO DEL COMPROMISO
+    col_anexo = df.columns[7]       # H: Número de anexo
+    col_proveedor = df.columns[8]   # I: Proveedor
+    col_rfc = df.columns[9]         # J: RFC
+    col_ptda = df.columns[18]       # S: PTDA
     
-    # Componentes de clave presupuestal
+    # Componentes presupuestales
     col_f = df.columns[12]   # M: F
     col_fn = df.columns[13]  # N: FN
     col_sf = df.columns[14]  # O: SF
@@ -33,277 +33,275 @@ def process_excel(excel_path, output_json_path):
     col_al = df.columns[37] # AL: Monto modificado INPer
     col_ao = df.columns[40] # AO: Monto pagado SICOP
     col_ap = df.columns[41] # AP: Monto pagado INPer
-    col_at = df.columns[45] # AT: Recurso disponible / por ejercer SICOP
+    col_at = df.columns[45] # AT: Recurso disponible SICOP para el compromiso
     col_av = df.columns[47] # AV: Estimación INPer del monto por ejercer
     col_obs = df.columns[50] # AY: Observaciones
 
     total_rows = len(df)
     
     df['row_id'] = range(1, total_rows + 1)
-    df['raw_contrato'] = df[col_contrato]
-    df['raw_folio'] = df[col_folio]
+    df['raw_f_contrato'] = df[col_contrato]
+    df['raw_g_folio'] = df[col_folio]
     
-    # Forward-fill de Contrato y Folio
+    # Identificar presencia limpia de F y G
+    df['has_f'] = df['raw_f_contrato'].notna() & (df['raw_f_contrato'].astype(str).str.strip() != '') & (df['raw_f_contrato'].astype(str).str.strip() != 'nan')
+    df['has_g'] = df['raw_g_folio'].notna() & (df['raw_g_folio'].astype(str).str.strip() != '') & (df['raw_g_folio'].astype(str).str.strip() != 'nan')
+
+    # Regla 2: Herencia del número de contrato F cuando G está presente pero F está vacío
     df['contrato_clean'] = df[col_contrato].ffill().astype(str).str.strip()
-    df['folio_clean'] = df[col_folio].ffill().astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
-    
-    # Text cleanups
+    df['folio_clean'] = df[col_folio].astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
+
+    # Limpieza de textos y metadatos
     df['ur_clean'] = df[col_ur].ffill().fillna('N/A').astype(str).str.strip()
     df['servicio_clean'] = df[col_servicio].ffill().fillna('N/A').astype(str).str.strip()
     df['proveedor_clean'] = df[col_proveedor].ffill().fillna('N/A').astype(str).str.strip()
     df['rfc_clean'] = df[col_rfc].ffill().fillna('N/A').astype(str).str.strip()
     df['solicitante_clean'] = df[col_solicitante].ffill().fillna('N/A').astype(str).str.strip()
-    
-    # Clave presupuestal única para deduplicación financiera
-    df['clave_prog'] = (df[col_f].fillna('').astype(str) + '-' + 
-                        df[col_fn].fillna('').astype(str) + '-' + 
-                        df[col_sf].fillna('').astype(str) + '-' + 
-                        df[col_rg].fillna('').astype(str) + '-' + 
-                        df[col_ai].fillna('').astype(str) + '-' + 
-                        df[col_pp].fillna('').astype(str) + '-' + 
-                        df[col_ptda].fillna('').astype(str))
 
+    # Distinguir AV explícito vs AV vacío (Regla 5)
+    df['av_raw_value'] = df[col_av]
+    df['is_av_empty'] = df[col_av].isna() | (df[col_av].astype(str).str.strip() == '')
+
+    # Valores numéricos limpios
     for c in [col_ak, col_al, col_ao, col_ap, col_at, col_av]:
         df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0.0)
 
     # -------------------------------------------------------------
-    # FUNCIÓN DE PROCESAMIENTO (RAW vs DEDUPLICADO)
+    # SEPARACIÓN DE UNIVERSOS: CONCILIADO (has_g == True) vs UNLINKED (has_g == False)
     # -------------------------------------------------------------
-    def generate_dataset_mode(deduplicate=False):
-        partidas_by_key = {}
+    conciliated_df = df[df['has_g']].copy()
+    unlinked_df = df[~df['has_g']].copy()
+
+    # -------------------------------------------------------------
+    # 1. UNIVERSO CONCILIADO: AGREGACIÓN POR COMPROMISO Y CONTRATO
+    # -------------------------------------------------------------
+    partidas_by_key = {}
+    for idx, r in conciliated_df.iterrows():
+        key = (r['contrato_clean'], r['folio_clean'])
+        if key not in partidas_by_key:
+            partidas_by_key[key] = []
         
-        # 1. Partidas
-        for idx, r in df.iterrows():
-            key = (r['contrato_clean'], r['folio_clean'])
-            if key not in partidas_by_key:
-                partidas_by_key[key] = []
-            
-            clave_p = f"{r[col_f]}-{r[col_fn]}-{r[col_sf]}-{r[col_rg]}-{r[col_ai]}-{r[col_pp]}" if pd.notna(r[col_f]) else "N/A"
-            
-            partidas_by_key[key].append({
-                'row_id': int(r['row_id']),
-                'no': str(r[col_no]) if pd.notna(r[col_no]) else 'N/A',
-                'ptda': str(r[col_ptda]) if pd.notna(r[col_ptda]) else 'N/A',
-                'clave_programatica': clave_p,
-                'bien_servicio': str(r[col_servicio]) if pd.notna(r[col_servicio]) else 'N/A',
-                'modificado_sicop': float(r[col_ak]),
-                'modificado_inper': float(r[col_al]),
-                'pagado_sicop': float(r[col_ao]),
-                'pagado_inper': float(r[col_ap]),
-                'disponible_sicop': float(r[col_at]),
-                'estimacion_inper': float(r[col_av]),
-                'observaciones': str(r[col_obs]) if pd.notna(r[col_obs]) else ''
-            })
+        clave_prog = f"{r[col_f]}-{r[col_fn]}-{r[col_sf]}-{r[col_rg]}-{r[col_ai]}-{r[col_pp]}" if pd.notna(r[col_f]) else "N/A"
+        
+        partidas_by_key[key].append({
+            'row_id': int(r['row_id']),
+            'no': str(r[col_no]) if pd.notna(r[col_no]) else 'N/A',
+            'ptda': str(r[col_ptda]) if pd.notna(r[col_ptda]) else 'N/A',
+            'clave_programatica': clave_prog,
+            'bien_servicio': str(r[col_servicio]) if pd.notna(r[col_servicio]) else 'N/A',
+            'modificado_sicop': float(r[col_ak]),
+            'modificado_inper': float(r[col_al]),
+            'pagado_sicop': float(r[col_ao]),
+            'pagado_inper': float(r[col_ap]),
+            'disponible_sicop': float(r[col_at]),
+            'estimacion_inper': float(r[col_av]),
+            'is_av_empty': bool(r['is_av_empty']),
+            'observaciones': str(r[col_obs]) if pd.notna(r[col_obs]) else ''
+        })
 
-        # 2. Compromisos
-        if deduplicate:
-            # Agrupación por clave programática única para evitar multiplicar sub-filas repetidas
-            dedup_df = df.groupby(['contrato_clean', 'folio_clean', 'clave_prog'], as_index=False).agg(
-                ur=('ur_clean', 'first'),
-                solicitante=('solicitante_clean', 'first'),
-                servicio=('servicio_clean', 'first'),
-                proveedor=('proveedor_clean', 'first'),
-                rfc=('rfc_clean', 'first'),
-                ak=(col_ak, 'first'),
-                al=(col_al, 'sum'),
-                ao=(col_ao, 'first'),
-                ap=(col_ap, 'sum'),
-                at=(col_at, 'first'),
-                av=(col_av, 'sum')
-            )
-            
-            commitment_grp = dedup_df.groupby(['contrato_clean', 'folio_clean'], as_index=False).agg(
-                ur=('ur', 'first'),
-                solicitante=('solicitante', 'first'),
-                servicio=('servicio', 'first'),
-                proveedor=('proveedor', 'first'),
-                rfc=('rfc', 'first'),
-                partidas_count=('clave_prog', 'count'),
-                modificado_sicop=('ak', 'sum'),
-                modificado_inper=('al', 'sum'),
-                pagado_sicop=('ao', 'sum'),
-                pagado_inper=('ap', 'sum'),
-                disponible_sicop=('at', 'sum'),
-                estimacion_inper=('av', 'sum')
-            )
-        else:
-            # Suma bruta tabular de todas las filas del Excel
-            commitment_grp = df.groupby(['contrato_clean', 'folio_clean'], as_index=False).agg(
-                ur=('ur_clean', 'first'),
-                solicitante=('solicitante_clean', 'first'),
-                servicio=('servicio_clean', 'first'),
-                proveedor=('proveedor_clean', 'first'),
-                rfc=('rfc_clean', 'first'),
-                partidas_count=('row_id', 'count'),
-                modificado_sicop=(col_ak, 'sum'),
-                modificado_inper=(col_al, 'sum'),
-                pagado_sicop=(col_ao, 'sum'),
-                pagado_inper=(col_ap, 'sum'),
-                disponible_sicop=(col_at, 'sum'),
-                estimacion_inper=(col_av, 'sum')
-            )
+    commitment_grp = conciliated_df.groupby(['contrato_clean', 'folio_clean'], as_index=False).agg(
+        ur=('ur_clean', 'first'),
+        solicitante=('solicitante_clean', 'first'),
+        servicio=('servicio_clean', 'first'),
+        proveedor=('proveedor_clean', 'first'),
+        rfc=('rfc_clean', 'first'),
+        partidas_count=('row_id', 'count'),
+        modificado_sicop=(col_ak, 'sum'),
+        modificado_inper=(col_al, 'sum'),
+        pagado_sicop=(col_ao, 'sum'),
+        pagado_inper=(col_ap, 'sum'),
+        disponible_sicop=(col_at, 'sum'),
+        estimacion_inper=(col_av, 'sum')
+    )
 
-        commitments_by_contract = {}
-        for idx, r in commitment_grp.iterrows():
-            c_name = r['contrato_clean']
-            f_name = r['folio_clean']
-            if c_name not in commitments_by_contract:
-                commitments_by_contract[c_name] = []
-            
-            ak = float(r['modificado_sicop'])
-            al = float(r['modificado_inper'])
-            ao = float(r['pagado_sicop'])
-            ap = float(r['pagado_inper'])
-            at = float(r['disponible_sicop'])
-            av = float(r['estimacion_inper'])
-            
-            dif_mod = ak - al
-            dif_pag = ao - ap
-            suf = at - av
-            
-            TOL = 0.01
-            estatus = "SOBRA RECURSO" if suf > TOL else ("FALTA RECURSO" if suf < -TOL else "EQUILIBRADO")
-            
-            commitments_by_contract[c_name].append({
-                'folio': f_name,
-                'ur': str(r['ur']),
-                'solicitante': str(r['solicitante']),
-                'servicio': str(r['servicio']),
-                'proveedor': str(r['proveedor']),
-                'rfc': str(r['rfc']),
-                'partidas_count': int(r['partidas_count']),
-                'modificado_sicop': ak,
-                'modificado_inper': al,
-                'dif_modificado': dif_mod,
-                'pagado_sicop': ao,
-                'pagado_inper': ap,
-                'dif_pagado': dif_pag,
-                'disponible_sicop': at,
-                'estimacion_inper': av,
-                'suficiencia': suf,
-                'estatus': estatus,
-                'partidas': partidas_by_key.get((c_name, f_name), [])
-            })
-
-        # 3. Contratos
-        contract_grp = commitment_grp.groupby('contrato_clean', as_index=False).agg(
-            ur=('ur', 'first'),
-            solicitante=('solicitante', 'first'),
-            servicio=('servicio', 'first'),
-            proveedor=('proveedor', 'first'),
-            rfc=('rfc', 'first'),
-            folios_count=('folio_clean', 'count'),
-            partidas_count=('partidas_count', 'sum'),
-            modificado_sicop=('modificado_sicop', 'sum'),
-            modificado_inper=('modificado_inper', 'sum'),
-            pagado_sicop=('pagado_sicop', 'sum'),
-            pagado_inper=('pagado_inper', 'sum'),
-            disponible_sicop=('disponible_sicop', 'sum'),
-            estimacion_inper=('estimacion_inper', 'sum')
-        )
-
-        contracts_list = []
+    commitments_by_contract = {}
+    for idx, r in commitment_grp.iterrows():
+        c_name = r['contrato_clean']
+        f_name = r['folio_clean']
+        if c_name not in commitments_by_contract:
+            commitments_by_contract[c_name] = []
+        
+        ak = float(r['modificado_sicop'])
+        al = float(r['modificado_inper'])
+        ao = float(r['pagado_sicop'])
+        ap = float(r['pagado_inper'])
+        at = float(r['disponible_sicop'])
+        av = float(r['estimacion_inper'])
+        
+        dif_mod = ak - al
+        dif_pag = ao - ap
+        suf = at - av
+        
         TOL = 0.01
-        sobrante_global = 0.0
-        faltante_global = 0.0
-        count_sobra = 0
-        count_equilibrado = 0
-        count_falta = 0
+        estatus = "SOBRA RECURSO" if suf > TOL else ("FALTA RECURSO" if suf < -TOL else "EQUILIBRADO")
+        
+        commitments_by_contract[c_name].append({
+            'folio': f_name,
+            'ur': str(r['ur']),
+            'solicitante': str(r['solicitante']),
+            'servicio': str(r['servicio']),
+            'proveedor': str(r['proveedor']),
+            'rfc': str(r['rfc']),
+            'partidas_count': int(r['partidas_count']),
+            'modificado_sicop': ak,
+            'modificado_inper': al,
+            'dif_modificado': dif_mod,
+            'pagado_sicop': ao,
+            'pagado_inper': ap,
+            'dif_pagado': dif_pag,
+            'disponible_sicop': at,
+            'estimacion_inper': av,
+            'suficiencia': suf,
+            'estatus': estatus,
+            'partidas': partidas_by_key.get((c_name, f_name), [])
+        })
 
-        for idx, r in contract_grp.iterrows():
-            c_name = r['contrato_clean']
-            ak = float(r['modificado_sicop'])
-            al = float(r['modificado_inper'])
-            ao = float(r['pagado_sicop'])
-            ap = float(r['pagado_inper'])
-            at = float(r['disponible_sicop'])
-            av = float(r['estimacion_inper'])
+    contract_grp = commitment_grp.groupby('contrato_clean', as_index=False).agg(
+        ur=('ur', 'first'),
+        solicitante=('solicitante', 'first'),
+        servicio=('servicio', 'first'),
+        proveedor=('proveedor', 'first'),
+        rfc=('rfc', 'first'),
+        folios_count=('folio_clean', 'count'),
+        partidas_count=('partidas_count', 'sum'),
+        modificado_sicop=('modificado_sicop', 'sum'),
+        modificado_inper=('modificado_inper', 'sum'),
+        pagado_sicop=('pagado_sicop', 'sum'),
+        pagado_inper=('pagado_inper', 'sum'),
+        disponible_sicop=('disponible_sicop', 'sum'),
+        estimacion_inper=('estimacion_inper', 'sum')
+    )
+
+    contracts_list = []
+    TOL = 0.01
+    sobrante_global = 0.0
+    faltante_global = 0.0
+    count_sobra = 0
+    count_equilibrado = 0
+    count_falta = 0
+
+    for idx, r in contract_grp.iterrows():
+        c_name = r['contrato_clean']
+        ak = float(r['modificado_sicop'])
+        al = float(r['modificado_inper'])
+        ao = float(r['pagado_sicop'])
+        ap = float(r['pagado_inper'])
+        at = float(r['disponible_sicop'])
+        av = float(r['estimacion_inper'])
+        
+        dif_mod = ak - al
+        dif_pag = ao - ap
+        suf = at - av
+        
+        if suf > TOL:
+            estatus = "SOBRA RECURSO"
+            sobrante_global += suf
+            count_sobra += 1
+        elif suf < -TOL:
+            estatus = "FALTA RECURSO"
+            faltante_global += abs(suf)
+            count_falta += 1
+        else:
+            estatus = "EQUILIBRADO"
+            count_equilibrado += 1
             
-            dif_mod = ak - al
-            dif_pag = ao - ap
-            suf = at - av
-            
-            if suf > TOL:
-                estatus = "SOBRA RECURSO"
-                sobrante_global += suf
-                count_sobra += 1
-            elif suf < -TOL:
-                estatus = "FALTA RECURSO"
-                faltante_global += abs(suf)
-                count_falta += 1
-            else:
-                estatus = "EQUILIBRADO"
-                count_equilibrado += 1
-                
-            cobertura_pct = (at / av * 100.0) if av > 0 else (100.0 if (at == 0 and av == 0) else None)
-            
-            contracts_list.append({
-                'contrato': c_name,
-                'ur': str(r['ur']),
-                'solicitante': str(r['solicitante']),
-                'servicio': str(r['servicio']),
-                'proveedor': str(r['proveedor']),
-                'rfc': str(r['rfc']),
-                'folios_count': int(r['folios_count']),
-                'partidas_count': int(r['partidas_count']),
-                'modificado_sicop': ak,
-                'modificado_inper': al,
-                'dif_modificado': dif_mod,
-                'pagado_sicop': ao,
-                'pagado_inper': ap,
-                'dif_pagado': dif_pag,
-                'disponible_sicop': at,
-                'estimacion_inper': av,
-                'suficiencia': suf,
-                'estatus': estatus,
-                'cobertura_pct': cobertura_pct,
-                'compromisos': commitments_by_contract.get(c_name, [])
-            })
+        cobertura_pct = (at / av * 100.0) if av > 0 else (100.0 if (at == 0 and av == 0) else None)
+        
+        contracts_list.append({
+            'contrato': c_name,
+            'ur': str(r['ur']),
+            'solicitante': str(r['solicitante']),
+            'servicio': str(r['servicio']),
+            'proveedor': str(r['proveedor']),
+            'rfc': str(r['rfc']),
+            'folios_count': int(r['folios_count']),
+            'partidas_count': int(r['partidas_count']),
+            'modificado_sicop': ak,
+            'modificado_inper': al,
+            'dif_modificado': dif_mod,
+            'pagado_sicop': ao,
+            'pagado_inper': ap,
+            'dif_pagado': dif_pag,
+            'disponible_sicop': at,
+            'estimacion_inper': av,
+            'suficiencia': suf,
+            'estatus': estatus,
+            'cobertura_pct': cobertura_pct,
+            'compromisos': commitments_by_contract.get(c_name, [])
+        })
 
-        tot_ak = sum(c['modificado_sicop'] for c in contracts_list)
-        tot_al = sum(c['modificado_inper'] for c in contracts_list)
-        tot_ao = sum(c['pagado_sicop'] for c in contracts_list)
-        tot_ap = sum(c['pagado_inper'] for c in contracts_list)
-        tot_at = sum(c['disponible_sicop'] for c in contracts_list)
-        tot_av = sum(c['estimacion_inper'] for c in contracts_list)
+    tot_conciliado_at = sum(c['disponible_sicop'] for c in contracts_list)
+    tot_conciliado_av = sum(c['estimacion_inper'] for c in contracts_list)
+    tot_conciliado_suf = tot_conciliado_at - tot_conciliado_av
 
-        return {
-            'global_totals': {
-                'modificado_sicop': tot_ak,
-                'modificado_inper': tot_al,
-                'dif_modificado': tot_ak - tot_al,
-                'pagado_sicop': tot_ao,
-                'pagado_inper': tot_ap,
-                'dif_pagado': tot_ao - tot_ap,
-                'disponible_sicop': tot_at,
-                'estimacion_inper': tot_av,
-                'suficiencia_neta': tot_at - tot_av,
-                'sobrante_total': sobrante_global,
-                'faltante_total': faltante_global,
-                'count_sobra': count_sobra,
-                'count_equilibrado': count_equilibrado,
-                'count_falta': count_falta
-            },
-            'contracts': contracts_list
-        }
+    # -------------------------------------------------------------
+    # 2. RECURSOS PENDIENTES DE VINCULACIÓN (REGISTROS SIN FOLIO G)
+    # -------------------------------------------------------------
+    unlinked_at = float(unlinked_df[col_at].sum())
+    unlinked_av = float(unlinked_df[col_av].sum())
+    unlinked_ak = float(unlinked_df[col_ak].sum())
+    unlinked_al = float(unlinked_df[col_al].sum())
 
-    raw_data = generate_dataset_mode(deduplicate=False)
-    dedup_data = generate_dataset_mode(deduplicate=True)
+    # Caso A: Tiene contrato (F) y no tiene compromiso (G)
+    caso_a_df = unlinked_df[unlinked_df['has_f']]
+    # Caso B: No tiene contrato (F) ni compromiso (G)
+    caso_b_df = unlinked_df[~unlinked_df['has_f']]
 
-    # 4. AUDITORÍA Y CONTROL DE CALIDAD
-    sicop_only = [c for c in dedup_data['contracts'] if c['modificado_sicop'] > 0 and c['modificado_inper'] == 0]
-    inper_only = [c for c in dedup_data['contracts'] if c['modificado_inper'] > 0 and c['modificado_sicop'] == 0]
-    extreme_variances = [c for c in dedup_data['contracts'] if abs(c['suficiencia']) >= 1000000.0 or abs(c['dif_modificado']) >= 1000000.0]
+    unlinked_details = {
+        'total_unlinked_rows': len(unlinked_df),
+        'at_unlinked_total': unlinked_at,
+        'av_unlinked_total': unlinked_av,
+        'ak_unlinked_total': unlinked_ak,
+        'al_unlinked_total': unlinked_al,
+        'caso_a_count': len(caso_a_df),
+        'caso_a_at': float(caso_a_df[col_at].sum()),
+        'caso_a_av': float(caso_a_df[col_av].sum()),
+        'caso_b_count': len(caso_b_df),
+        'caso_b_at': float(caso_b_df[col_at].sum()),
+        'caso_b_av': float(caso_b_df[col_av].sum()),
+        'caso_a_rows': [{'row_id': int(r['row_id']), 'contrato': str(r[col_contrato]), 'servicio': str(r['servicio_clean']), 'at': float(r[col_at]), 'av': float(r[col_av])} for idx, r in caso_a_df.iterrows()],
+        'caso_b_rows': [{'row_id': int(r['row_id']), 'no': str(r[col_no]), 'servicio': str(r['servicio_clean']), 'at': float(r[col_at]), 'av': float(r[col_av])} for idx, r in caso_b_df.iterrows()]
+    }
+
+    # -------------------------------------------------------------
+    # 3. CONTROL Y AUDITORÍA DE CALIDAD
+    # -------------------------------------------------------------
+    sicop_only = [c for c in contracts_list if c['modificado_sicop'] > 0 and c['modificado_inper'] == 0]
+    inper_only = [c for c in contracts_list if c['modificado_inper'] > 0 and c['modificado_sicop'] == 0]
+    extreme_variances = [c for c in contracts_list if abs(c['suficiencia']) >= 1000000.0 or abs(c['dif_modificado']) >= 1000000.0]
 
     dataset = {
         'metadata': {
             'total_rows': total_rows,
-            'total_contracts': len(raw_data['contracts']),
-            'total_commitments': len(df.groupby(['contrato_clean', 'folio_clean'])),
-            'total_partidas': total_rows
+            'total_conciliated_contracts': len(contracts_list),
+            'total_conciliated_commitments': len(commitment_grp),
+            'total_conciliated_rows': len(conciliated_df),
+            'total_unlinked_rows': len(unlinked_df)
         },
-        'raw_mode': raw_data,
-        'dedup_mode': dedup_data,
+        'mandatory_control_values': {
+            'disponible_sicop_conciliado': tot_conciliado_at,       # 388,037,428.57
+            'estimacion_inper_conciliado': tot_conciliado_av,       # 201,310,252.66
+            'saldo_suficiencia_conciliado': tot_conciliado_suf,     # +186,727,175.91
+            'interpretacion': "SOBRA RECURSO POR $186,727,175.91",
+            'at_sin_folio': unlinked_at,                            # 1,193,384.26
+            'av_sin_folio': unlinked_av                             # 78,597,294.20
+        },
+        'global_totals': {
+            'disponible_sicop': tot_conciliado_at,
+            'estimacion_inper': tot_conciliado_av,
+            'suficiencia_neta': tot_conciliado_suf,
+            'sobrante_total': sobrante_global,
+            'faltante_total': faltante_global,
+            'count_sobra': count_sobra,
+            'count_equilibrado': count_equilibrado,
+            'count_falta': count_falta,
+            'modificado_sicop': sum(c['modificado_sicop'] for c in contracts_list),
+            'modificado_inper': sum(c['modificado_inper'] for c in contracts_list),
+            'pagado_sicop': sum(c['pagado_sicop'] for c in contracts_list),
+            'pagado_inper': sum(c['pagado_inper'] for c in contracts_list)
+        },
+        'contracts': contracts_list,
+        'unlinked_resources': unlinked_details,
         'audit': {
             'count_sicop_only': len(sicop_only),
             'count_inper_only': len(inper_only),
@@ -317,7 +315,13 @@ def process_excel(excel_path, output_json_path):
     with open(output_json_path, 'w', encoding='utf-8') as f:
         json.dump(dataset, f, ensure_ascii=False, indent=2)
         
-    print(f"data.json actualizado exitosamente en {output_json_path}")
+    print(f"data.json generado exitosamente en {output_json_path}")
+    print("\n--- MANDATORY CONTROL VALUES CHECK ---")
+    print(f"Disponible SICOP Conciliado: ${tot_conciliado_at:,.2f}")
+    print(f"Estimación INPer Conciliado: ${tot_conciliado_av:,.2f}")
+    print(f"Saldo Suficiencia Conciliado: ${tot_conciliado_suf:,.2f}")
+    print(f"AT Sin Folio: ${unlinked_at:,.2f}")
+    print(f"AV Sin Folio: ${unlinked_av:,.2f}")
 
 if __name__ == '__main__':
     excel_file = r'c:\Users\chuch\.gemini\antigravity\playground\compromisosv2\Pruebareporteejecutivo_validado_PCOM_CORREGIDO_DESGLOSE (2).xlsx'
