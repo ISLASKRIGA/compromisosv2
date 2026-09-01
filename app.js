@@ -1,6 +1,7 @@
 // JavaScript for INPer - Visualizador Ejecutivo de Conciliación Financiera SICOP vs INPer
 
 let fullData = null;
+let currentMode = 'dedup_mode'; // Default: 'dedup_mode' (Real Deduplicado) or 'raw_mode'
 let currentStatusFilter = 'ALL';
 let currentSearchQuery = '';
 let currentTolerance = 0.01;
@@ -31,7 +32,35 @@ async function initApp() {
   }
 }
 
+function getActiveDataset() {
+  if (!fullData) return { global_totals: {}, contracts: [] };
+  return fullData[currentMode] || fullData.dedup_mode;
+}
+
 function setupEventListeners() {
+  // Mode toggles
+  const btnModeDedup = document.getElementById('btnModeDedup');
+  const btnModeRaw = document.getElementById('btnModeRaw');
+  const expertAlert = document.getElementById('expertAlert');
+
+  btnModeDedup.addEventListener('click', () => {
+    currentMode = 'dedup_mode';
+    btnModeDedup.classList.add('active');
+    btnModeRaw.classList.remove('active');
+    expertAlert.style.display = 'block';
+    recalculateStatuses();
+    renderAll();
+  });
+
+  btnModeRaw.addEventListener('click', () => {
+    currentMode = 'raw_mode';
+    btnModeRaw.classList.add('active');
+    btnModeDedup.classList.remove('active');
+    expertAlert.style.display = 'none';
+    recalculateStatuses();
+    renderAll();
+  });
+
   // Search input
   const searchInput = document.getElementById('searchInput');
   searchInput.addEventListener('input', (e) => {
@@ -59,7 +88,7 @@ function setupEventListeners() {
   });
 
   // Tab navigation
-  const tabBtns = document.querySelectorAll('.tab-btn');
+  const tabBtns = document.querySelectorAll('.tab-btn[data-tab]');
   tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       tabBtns.forEach(b => b.classList.remove('active'));
@@ -80,7 +109,7 @@ function setupEventListeners() {
         currentSortAsc = !currentSortAsc;
       } else {
         currentSortCol = col;
-        currentSortAsc = false; // Default desc for numbers
+        currentSortAsc = false;
       }
       renderTable();
     });
@@ -98,7 +127,8 @@ function setupEventListeners() {
 }
 
 function recalculateStatuses() {
-  if (!fullData) return;
+  const dataset = getActiveDataset();
+  if (!dataset || !dataset.contracts) return;
 
   let countSobra = 0;
   let countEquilibrado = 0;
@@ -106,7 +136,7 @@ function recalculateStatuses() {
   let sobranteTotal = 0;
   let faltanteTotal = 0;
 
-  fullData.contracts.forEach(c => {
+  dataset.contracts.forEach(c => {
     const suf = c.disponible_sicop - c.estimacion_inper;
     c.suficiencia = suf;
 
@@ -123,7 +153,6 @@ function recalculateStatuses() {
       countEquilibrado++;
     }
 
-    // Recalculate commitments
     c.compromisos.forEach(comp => {
       const compSuf = comp.disponible_sicop - comp.estimacion_inper;
       comp.suficiencia = compSuf;
@@ -133,23 +162,22 @@ function recalculateStatuses() {
     });
   });
 
-  fullData.global_totals.count_sobra = countSobra;
-  fullData.global_totals.count_equilibrado = countEquilibrado;
-  fullData.global_totals.count_falta = countFalta;
-  fullData.global_totals.sobrante_total = sobranteTotal;
-  fullData.global_totals.faltante_total = faltanteTotal;
+  dataset.global_totals.count_sobra = countSobra;
+  dataset.global_totals.count_equilibrado = countEquilibrado;
+  dataset.global_totals.count_falta = countFalta;
+  dataset.global_totals.sobrante_total = sobranteTotal;
+  dataset.global_totals.faltante_total = faltanteTotal;
 }
 
 function getFilteredContracts() {
-  if (!fullData) return [];
+  const dataset = getActiveDataset();
+  if (!dataset || !dataset.contracts) return [];
 
-  return fullData.contracts.filter(c => {
-    // Status filter
+  return dataset.contracts.filter(c => {
     if (currentStatusFilter !== 'ALL' && c.estatus !== currentStatusFilter) {
       return false;
     }
 
-    // Search query filter
     if (currentSearchQuery) {
       const q = currentSearchQuery;
       const matchContrato = c.contrato.toLowerCase().includes(q);
@@ -205,11 +233,10 @@ function formatCurrency(val) {
 }
 
 function renderConclusion() {
-  if (!fullData) return;
+  const dataset = getActiveDataset();
+  if (!dataset || !dataset.global_totals) return;
 
-  const filtered = getFilteredContracts();
-  const totals = fullData.global_totals;
-
+  const totals = dataset.global_totals;
   const disp = totals.disponible_sicop;
   const est = totals.estimacion_inper;
   const suf = totals.suficiencia_neta;
@@ -227,28 +254,28 @@ function renderConclusion() {
     statusText = `FALTA RECURSO por ${formatCurrency(Math.abs(suf))}`;
     badgeClass = 'badge-falta';
   } else {
-    statusText = `RECURSO EQUILIBRADO (Diferencia de ${formatCurrency(suf)})`;
+    statusText = `RECURSO EQUILIBRADO (${formatCurrency(suf)})`;
     badgeClass = 'badge-equilibrado';
   }
 
   badgeEl.className = `conclusion-badge ${badgeClass}`;
   badgeEl.innerText = statusText;
 
-  const topDeficit = [...fullData.contracts].sort((a, b) => a.suficiencia - b.suficiencia)[0];
-  const topSurplus = [...fullData.contracts].sort((a, b) => b.suficiencia - a.suficiencia)[0];
+  const topDeficit = [...dataset.contracts].sort((a, b) => a.suficiencia - b.suficiencia)[0];
+  const isDedupMode = currentMode === 'dedup_mode';
 
   bodyEl.innerHTML = `
     <p>
-      El análisis financiero de conciliación sobre el universo de <strong>${totals.count_sobra + totals.count_equilibrado + totals.count_falta} contratos</strong> 
-      (${fullData.metadata.total_commitments} compromisos y ${fullData.metadata.total_partidas} partidas presupuestales) determina que:
+      El diagnóstico financiero en <strong>${isDedupMode ? 'MODO FINANCIERO REAL (DEDUPLICADO)' : 'MODO BRUTO TABULAR (EXCEL)'}</strong> sobre el universo de <strong>${totals.count_sobra + totals.count_equilibrado + totals.count_falta} contratos</strong> 
+      determina que:
     </p>
     <ul style="margin-top: 8px; margin-left: 20px; margin-bottom: 8px;">
       <li><strong>Fuente Fidedigna (SICOP)</strong> registra un Recurso Disponible acumulado de <span class="highlight-val highlight-neutral">${formatCurrency(disp)}</span>.</li>
-      <li><strong>Captura Manual (INPer)</strong> registra una Estimación del Monto por Ejercer de <span class="highlight-val highlight-neutral">${formatCurrency(est)}</span>.</li>
-      <li><strong>Resultado Global de Suficiencia</strong>: El disponible en SICOP <strong style="color: ${suf >= 0 ? '#34d399' : '#f87171'};">${suf >= 0 ? 'CUBRE TOTALMENTE' : 'NO ES SUFICIENTE PARA CUBRIR'}</strong> la estimación de INPer, generando un saldo neto de <span class="highlight-val ${suf >= 0 ? 'highlight-positive' : 'highlight-negative'}">${formatCurrency(suf)}</span>.</li>
+      <li><strong>Captura Manual (INPer)</strong> registra una Estimación por Ejercer de <span class="highlight-val highlight-neutral">${formatCurrency(est)}</span>.</li>
+      <li><strong>Resultado de Suficiencia</strong>: El disponible en SICOP <strong style="color: ${suf >= 0 ? '#34d399' : '#f87171'};">${suf >= 0 ? 'CUBRE TOTALMENTE' : 'NO ES SUFICIENTE PARA CUBRIR'}</strong> la estimación de INPer, generando un saldo de <span class="highlight-val ${suf >= 0 ? 'highlight-positive' : 'highlight-negative'}">${formatCurrency(suf)}</span>.</li>
     </ul>
     <p style="font-size: 0.9rem; color: var(--text-muted);">
-      <strong>Desglose por Contratos:</strong> <span style="color: #34d399; font-weight:700;">${totals.count_sobra} contratos</span> presentan Recurso Excedente ($${formatCurrency(totals.sobrante_total)}), 
+      <strong>Desglose:</strong> <span style="color: #34d399; font-weight:700;">${totals.count_sobra} contratos</span> presentan Recurso Excedente ($${formatCurrency(totals.sobrante_total)}), 
       <span style="color: #fbbf24; font-weight:700;">${totals.count_equilibrado} contratos</span> se encuentran Equilibrados, y 
       <span style="color: #f87171; font-weight:700;">${totals.count_falta} contratos</span> presentan Insuficiencia Presupuestal (-$${formatCurrency(totals.faltante_total)}).
       ${topDeficit ? ` El mayor faltante individual corresponde al contrato <strong>${topDeficit.contrato}</strong> (${topDeficit.proveedor}) por <strong>${formatCurrency(topDeficit.suficiencia)}</strong>.` : ''}
@@ -257,9 +284,10 @@ function renderConclusion() {
 }
 
 function renderKPIs() {
-  if (!fullData) return;
+  const dataset = getActiveDataset();
+  if (!dataset || !dataset.global_totals) return;
 
-  const totals = fullData.global_totals;
+  const totals = dataset.global_totals;
   const filtered = getFilteredContracts();
 
   document.getElementById('kpiDisponibleSICOP').innerText = formatCurrency(totals.disponible_sicop);
@@ -280,7 +308,8 @@ function renderKPIs() {
 }
 
 function renderCharts() {
-  if (!fullData) return;
+  const dataset = getActiveDataset();
+  if (!dataset || !dataset.global_totals) return;
 
   renderSufficiencyChart();
   renderDistributionChart();
@@ -289,7 +318,8 @@ function renderCharts() {
 
 function renderSufficiencyChart() {
   const ctx = document.getElementById('chartSufficiency').getContext('2d');
-  const totals = fullData.global_totals;
+  const dataset = getActiveDataset();
+  const totals = dataset.global_totals;
 
   if (chartSufficiency) chartSufficiency.destroy();
 
@@ -307,9 +337,7 @@ function renderSufficiencyChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false }
-      },
+      plugins: { legend: { display: false } },
       scales: {
         y: {
           ticks: { color: '#94a3b8', callback: (v) => '$' + (v / 1e6).toFixed(1) + 'M' },
@@ -326,7 +354,8 @@ function renderSufficiencyChart() {
 
 function renderDistributionChart() {
   const ctx = document.getElementById('chartDistribution').getContext('2d');
-  const totals = fullData.global_totals;
+  const dataset = getActiveDataset();
+  const totals = dataset.global_totals;
 
   if (chartDistribution) chartDistribution.destroy();
 
@@ -355,9 +384,10 @@ function renderDistributionChart() {
 
 function renderRankingChart() {
   const ctx = document.getElementById('chartRanking').getContext('2d');
+  const dataset = getActiveDataset();
   const rankingType = document.getElementById('rankingSelect').value;
 
-  let sorted = [...fullData.contracts];
+  let sorted = [...dataset.contracts];
 
   if (rankingType === 'faltante') {
     sorted.sort((a, b) => a.suficiencia - b.suficiencia);
@@ -410,7 +440,8 @@ function renderRankingChart() {
 }
 
 function renderTable() {
-  if (!fullData) return;
+  const dataset = getActiveDataset();
+  if (!dataset || !dataset.contracts) return;
 
   const tbody = document.getElementById('contractsTableBody');
   const filtered = getFilteredContracts();
@@ -582,31 +613,28 @@ window.toggleCommitment = function(compKey) {
 };
 
 function renderAudit() {
-  if (!fullData) return;
+  if (!fullData || !fullData.audit) return;
 
   const audit = fullData.audit;
 
   document.getElementById('auditCountBadge').innerText = audit.count_sicop_only + audit.count_inper_only + audit.count_extreme_variances;
 
-  // Sicop only
   const sicopOnlyContainer = document.getElementById('auditSicopOnlyList');
   sicopOnlyContainer.innerHTML = audit.sicop_only_summary.map(item => `
     <div class="audit-item">
-      <div><strong>Contrato ${item.contrato}</strong> (Folio ${item.folio})</div>
+      <div><strong>Contrato ${item.contrato}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${item.proveedor}</span></div>
       <div style="color: var(--color-sicop); font-weight:700;">${formatCurrency(item.disponible_sicop)}</div>
     </div>
   `).join('');
 
-  // Inper only
   const inperOnlyContainer = document.getElementById('auditInperOnlyList');
   inperOnlyContainer.innerHTML = audit.inper_only_summary.map(item => `
     <div class="audit-item">
-      <div><strong>Contrato ${item.contrato}</strong> (Folio ${item.folio})</div>
+      <div><strong>Contrato ${item.contrato}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${item.proveedor}</span></div>
       <div style="color: var(--color-inper); font-weight:700;">${formatCurrency(item.estimacion_inper)}</div>
     </div>
   `).join('');
 
-  // Extreme variances
   const extremeContainer = document.getElementById('auditExtremeList');
   extremeContainer.innerHTML = audit.extreme_variances_summary.map(item => `
     <div class="audit-item">
@@ -617,8 +645,6 @@ function renderAudit() {
 }
 
 function exportToCSV() {
-  if (!fullData) return;
-
   const filtered = getFilteredContracts();
   const headers = [
     'Contrato', 'Proveedor', 'UR', 'Folios_Count', 'Partidas_Count',
@@ -652,9 +678,9 @@ function exportToCSV() {
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
+  const link = document.append? (document.createElement('a')) : document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', `Conciliacion_SICOP_vs_INPer_${new Date().toISOString().slice(0, 10)}.csv`);
+  link.setAttribute('download', `Conciliacion_${currentMode}_${new Date().toISOString().slice(0, 10)}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

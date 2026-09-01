@@ -30,6 +30,16 @@
       </div>
 
       <div class="nav-controls">
+        <!-- Analysis Mode Selector -->
+        <div style="background: rgba(255, 255, 255, 0.05); padding: 4px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; gap: 4px;">
+          <button id="btnModeDedup" class="tab-btn active" style="padding: 6px 12px; font-size: 0.8rem;" title="Recomendado por expertos: Deduplica la repetición de renglones presupuestales en SICOP">
+            🛡️ Modo Financiero Real (Deduplicado)
+          </button>
+          <button id="btnModeRaw" class="tab-btn" style="padding: 6px 12px; font-size: 0.8rem;" title="Suma bruta tabular de todas las filas del Excel sin deduplicar">
+            📋 Modo Bruto Tabular (Excel)
+          </button>
+        </div>
+
         <input type="text" id="searchInput" class="search-input" placeholder="🔍 Buscar contrato, proveedor, UR, folio...">
         
         <div class="tolerance-control">
@@ -46,6 +56,19 @@
 
   <!-- Main Container -->
   <main class="main-container">
+
+    <!-- Health Financial Expert Audit Alert -->
+    <div id="expertAlert" class="conclusion-card" style="border-left-color: #f59e0b; background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(15, 23, 42, 0.95) 100%); display: none;">
+      <div class="conclusion-header">
+        <div class="conclusion-title" style="color: #fbbf24;">
+          <span>🩺</span> NOTA AUDITORA DE FINANZAS EN SALUD: DUPLICACIÓN ESTRUCTURAL DETECTADA
+        </div>
+      </div>
+      <div class="conclusion-body" style="font-size: 0.9rem;">
+        Se ha detectado que en contratos como <strong>007-5300-01/2026 (Limpieza)</strong> y <strong>005-5320-01/2026</strong>, el reporte original de Excel incluye desgloses repetidos de partidas en SICOP (por ejemplo, repite las 5 claves presupuestales del compromiso 9 veces).<br>
+        En el <strong>Modo Financiero Real (Deduplicado)</strong> se eliminan las partidas clonadas, revelando que el contrato 007-5300-01/2026 está <strong>CONCILIADO AL 100%</strong> en <strong>$30,877,207.00</strong> entre SICOP e INPer.
+      </div>
+    </div>
 
     <!-- Executive Conclusion Banner -->
     <section class="conclusion-card">
