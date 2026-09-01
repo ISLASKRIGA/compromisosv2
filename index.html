@@ -165,7 +165,7 @@
         </div>
 
         <div style="font-size: 0.85rem; color: var(--text-muted);">
-          Mostrando <strong id="lblRecordCount" style="color: #fff;">0</strong> contratos (haz clic en cualquier contrato para ver su detalle en ventana emergente)
+          Mostrando <strong id="lblRecordCount" style="color: #fff;">0</strong> contratos (haz clic en cualquier contrato para abrir su ventana de detalle)
         </div>
       </div>
 
@@ -290,60 +290,25 @@
 
   </main>
 
-  <!-- Executive Pop-up Modal Container for Contract Details -->
-  <div id="contractModalOverlay" class="modal-overlay" style="display: none;">
+  <!-- Executive Detail Modal Pop-up Window -->
+  <div id="detailModal" class="modal-backdrop" style="display: none;">
     <div class="modal-container">
       <div class="modal-header">
         <div class="modal-title-group">
-          <span class="modal-icon">📄</span>
+          <span class="modal-icon">📑</span>
           <div>
-            <h2 id="modalContractTitle" class="modal-title">Contrato</h2>
-            <div id="modalContractSubtitle" class="modal-subtitle">Proveedor</div>
+            <h2 id="modalTitle" class="modal-title">Contrato 007-5300-01/2026</h2>
+            <p id="modalSubtitle" class="modal-subtitle">GRUPO TECNO-REAL S.A. DE C.V.</p>
           </div>
         </div>
-        <div class="modal-header-actions">
-          <span id="modalContractBadge" class="conclusion-badge badge-sobra">SOBRA RECURSO</span>
-          <button id="btnModalClose" class="modal-btn-close" title="Cerrar ventana (Esc)">✕</button>
+        <div class="modal-header-right">
+          <span id="modalStatusBadge" class="conclusion-badge badge-falta">FALTA RECURSO</span>
+          <button id="modalCloseBtn" class="modal-close-btn" title="Cerrar ventana">&times;</button>
         </div>
       </div>
-
-      <div class="modal-body">
-        <!-- Financial Summary Grid inside Modal -->
-        <div class="modal-kpi-grid">
-          <div class="modal-kpi-box">
-            <div class="modal-kpi-label">Disponible SICOP (AT)</div>
-            <div id="modalDisponibleSICOP" class="modal-kpi-val" style="color: var(--color-sicop);">$0.00</div>
-          </div>
-
-          <div class="modal-kpi-box">
-            <div class="modal-kpi-label">Estimación INPer (AV)</div>
-            <div id="modalEstimacionINPer" class="modal-kpi-val" style="color: var(--color-inper);">$0.00</div>
-          </div>
-
-          <div class="modal-kpi-box">
-            <div class="modal-kpi-label">Saldo de Suficiencia</div>
-            <div id="modalSuficiencia" class="modal-kpi-val">$0.00</div>
-          </div>
-
-          <div class="modal-kpi-box">
-            <div class="modal-kpi-label">Modificado SICOP / INPer</div>
-            <div id="modalModificado" class="modal-kpi-val" style="font-size: 1.05rem;">$0.00 / $0.00</div>
-          </div>
-
-          <div class="modal-kpi-box">
-            <div class="modal-kpi-label">Pagado SICOP / INPer</div>
-            <div id="modalPagado" class="modal-kpi-val" style="font-size: 1.05rem;">$0.00 / $0.00</div>
-          </div>
-        </div>
-
-        <!-- Commitment & Partidas Breakdown Container -->
-        <div class="modal-section-title">
-          <span>📑</span> COMPROMISOS Y DESGLOSE DE PARTIDAS PRESUPUESTALES (<span id="modalFoliosCount">0</span> FOLIOS)
-        </div>
-
-        <div id="modalCommitmentsList" class="modal-commitments-list">
-          <!-- Dynamic commitments list injected by JS -->
-        </div>
+      
+      <div id="modalBody" class="modal-body">
+        <!-- Injected dynamically by JS -->
       </div>
     </div>
   </div>

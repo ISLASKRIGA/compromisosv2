@@ -124,21 +124,21 @@ function setupEventListeners() {
     btnExportExcel.addEventListener('click', downloadOriginalExcel);
   }
 
-  // Modal Close Listeners
-  const btnModalClose = document.getElementById('btnModalClose');
-  if (btnModalClose) {
-    btnModalClose.addEventListener('click', closeContractModal);
+  // Modal Close Events
+  const modalCloseBtn = document.getElementById('modalCloseBtn');
+  if (modalCloseBtn) {
+    modalCloseBtn.addEventListener('click', closeModal);
   }
 
-  const modalOverlay = document.getElementById('contractModalOverlay');
-  if (modalOverlay) {
-    modalOverlay.addEventListener('click', (e) => {
-      if (e.target === modalOverlay) closeContractModal();
+  const modalBackdrop = document.getElementById('detailModal');
+  if (modalBackdrop) {
+    modalBackdrop.addEventListener('click', (e) => {
+      if (e.target === modalBackdrop) closeModal();
     });
   }
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeContractModal();
+    if (e.key === 'Escape') closeModal();
   });
 }
 
@@ -450,9 +450,9 @@ function renderTable() {
     const badgeClass = c.estatus === 'SOBRA RECURSO' ? 'badge-sobra' : (c.estatus === 'FALTA RECURSO' ? 'badge-falta' : 'badge-equilibrado');
 
     html += `
-      <tr class="contract-row" onclick="openContractModal('${c.contrato}')" data-contrato="${c.contrato}" title="Haz clic para abrir el detalle completo del contrato ${c.contrato}">
-        <td style="text-align: center; color: var(--color-sicop); font-weight: bold;">
-          🔍
+      <tr class="contract-row" onclick="openContractModal('${c.contrato}')" data-contrato="${c.contrato}" title="Haz clic para abrir la ventana de detalle de este contrato">
+        <td style="text-align: center;">
+          <button class="btn-open-detail">🔍 Ver</button>
         </td>
         <td><strong>${c.contrato}</strong></td>
         <td title="${c.proveedor}" style="max-width: 220px; overflow: hidden; text-overflow: ellipsis;">${c.proveedor}</td>
@@ -473,86 +473,105 @@ function renderTable() {
   tbody.innerHTML = html;
 }
 
-// Open Pop-up Modal Window for Contract Detail
-window.openContractModal = function(contratoId) {
+// Open Executive Detail Modal Window
+window.openContractModal = function(contratoNum) {
   if (!fullData || !fullData.contracts) return;
-  const contract = fullData.contracts.find(c => c.contrato === contratoId);
-  if (!contract) return;
 
-  document.getElementById('modalContractTitle').innerText = `Contrato ${contract.contrato}`;
-  document.getElementById('modalContractSubtitle').innerText = contract.proveedor !== 'N/A' ? contract.proveedor : contract.servicio;
+  const c = fullData.contracts.find(item => item.contrato === contratoNum);
+  if (!c) return;
 
-  const badgeEl = document.getElementById('modalContractBadge');
-  badgeEl.className = `conclusion-badge ${contract.estatus === 'SOBRA RECURSO' ? 'badge-sobra' : (contract.estatus === 'FALTA RECURSO' ? 'badge-falta' : 'badge-equilibrado')}`;
-  badgeEl.innerText = contract.estatus;
+  document.getElementById('modalTitle').innerText = `Contrato ${c.contrato}`;
+  document.getElementById('modalSubtitle').innerText = c.proveedor !== 'N/A' ? c.proveedor : c.servicio;
 
-  // Modal KPIs
-  document.getElementById('modalDisponibleSICOP').innerText = formatCurrency(contract.disponible_sicop);
-  document.getElementById('modalEstimacionINPer').innerText = formatCurrency(contract.estimacion_inper);
+  const badgeEl = document.getElementById('modalStatusBadge');
+  const badgeClass = c.estatus === 'SOBRA RECURSO' ? 'badge-sobra' : (c.estatus === 'FALTA RECURSO' ? 'badge-falta' : 'badge-equilibrado');
+  badgeEl.className = `conclusion-badge ${badgeClass}`;
+  badgeEl.innerText = c.estatus;
 
-  const sufEl = document.getElementById('modalSuficiencia');
-  sufEl.innerText = formatCurrency(contract.suficiencia);
-  sufEl.style.color = contract.suficiencia >= 0 ? '#34d399' : '#f87171';
+  const modalBody = document.getElementById('modalBody');
 
-  document.getElementById('modalModificado').innerText = `${formatCurrency(contract.modificado_sicop)} / ${formatCurrency(contract.modificado_inper)}`;
-  document.getElementById('modalPagado').innerText = `${formatCurrency(contract.pagado_sicop)} / ${formatCurrency(contract.pagado_inper)}`;
+  let html = `
+    <!-- Executive KPI Grid inside Modal -->
+    <div class="modal-kpi-grid">
+      <div class="modal-kpi-card" style="border-left: 3px solid var(--color-sicop);">
+        <div class="modal-kpi-label">Disponible SICOP (AT)</div>
+        <div class="modal-kpi-val" style="color: var(--color-sicop);">${formatCurrency(c.disponible_sicop)}</div>
+      </div>
+      <div class="modal-kpi-card" style="border-left: 3px solid var(--color-inper);">
+        <div class="modal-kpi-label">Estimación INPer (AV)</div>
+        <div class="modal-kpi-val" style="color: var(--color-inper);">${formatCurrency(c.estimacion_inper)}</div>
+      </div>
+      <div class="modal-kpi-card" style="border-left: 3px solid ${c.suficiencia >= 0 ? '#34d399' : '#f87171'};">
+        <div class="modal-kpi-label">Saldo de Suficiencia</div>
+        <div class="modal-kpi-val" style="color: ${c.suficiencia >= 0 ? '#34d399' : '#f87171'};">${formatCurrency(c.suficiencia)}</div>
+      </div>
+      <div class="modal-kpi-card">
+        <div class="modal-kpi-label">Modificado (SICOP / INPer)</div>
+        <div class="modal-kpi-val" style="font-size: 0.95rem;">${formatCurrency(c.modificado_sicop)} / ${formatCurrency(c.modificado_inper)}</div>
+      </div>
+      <div class="modal-kpi-card">
+        <div class="modal-kpi-label">Pagado (SICOP / INPer)</div>
+        <div class="modal-kpi-val" style="font-size: 0.95rem;">${formatCurrency(c.pagado_sicop)} / ${formatCurrency(c.pagado_inper)}</div>
+      </div>
+    </div>
 
-  document.getElementById('modalFoliosCount').innerText = contract.compromisos.length;
+    <!-- Commitments Section -->
+    <div class="modal-section-title">
+      <span>📑</span> COMPROMISOS VINCULADOS A ESTE CONTRATO (${c.compromisos.length} FOLIOS)
+    </div>
+  `;
 
-  // Render Commitments inside Modal
-  const listContainer = document.getElementById('modalCommitmentsList');
-  let compsHtml = '';
-
-  contract.compromisos.forEach(comp => {
+  c.compromisos.forEach((comp, idx) => {
     const compBadgeClass = comp.estatus === 'SOBRA RECURSO' ? 'badge-sobra' : (comp.estatus === 'FALTA RECURSO' ? 'badge-falta' : 'badge-equilibrado');
 
-    compsHtml += `
-      <div class="modal-comp-card">
-        <div class="modal-comp-header">
-          <div class="modal-comp-title">
-            📌 Folio de Compromiso ${comp.folio} — <span style="color: var(--text-muted); font-weight: normal;">${comp.servicio}</span>
+    html += `
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleModalAccordion('acc_${idx}')">
+          <div>
+            <strong style="color: var(--color-sicop);">Folio ${comp.folio}</strong> — 
+            <span style="color: var(--text-muted);">${comp.servicio}</span>
           </div>
-          <div class="modal-comp-financials">
-            <div><span style="color:var(--text-muted);">Disponible SICOP:</span> <strong style="color:var(--color-sicop);">${formatCurrency(comp.disponible_sicop)}</strong></div>
-            <div><span style="color:var(--text-muted);">Estimación INPer:</span> <strong style="color:var(--color-inper);">${formatCurrency(comp.estimacion_inper)}</strong></div>
-            <div><span style="color:var(--text-muted);">Suficiencia:</span> <strong style="color: ${comp.suficiencia >= 0 ? '#34d399' : '#f87171'};">${formatCurrency(comp.suficiencia)}</strong></div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="color: var(--color-sicop); font-weight:700;">AT: ${formatCurrency(comp.disponible_sicop)}</span>
+            <span style="color: var(--color-inper); font-weight:700;">AV: ${formatCurrency(comp.estimacion_inper)}</span>
             <span class="badge ${compBadgeClass}">${comp.estatus}</span>
+            <span style="color: #94a3b8; font-size: 0.8rem;">▼</span>
           </div>
         </div>
-
-        <div style="padding: 12px; overflow-x: auto;">
-          <table class="modal-ptdas-table">
+        <div id="acc_${idx}" class="accordion-content" style="display: ${idx === 0 ? 'block' : 'none'};">
+          <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; margin-bottom: 8px;">
+            DESGLOSE DE PARTIDAS PRESUPUESTALES SICOP (${comp.partidas.length} CLAVES)
+          </div>
+          <table class="sub-table" style="width: 100%;">
             <thead>
               <tr>
-                <th>Fila Excel</th>
+                <th>Fila</th>
                 <th>PTDA</th>
                 <th>Clave Programática (F-FN-SF-RG-AI-PP)</th>
                 <th>Bien o Servicio Desglosado</th>
                 <th style="text-align: right;">Modif. SICOP</th>
                 <th style="text-align: right;">Pagado SICOP</th>
                 <th style="text-align: right; color: var(--color-sicop);">Disponible SICOP</th>
-                <th>Observaciones</th>
               </tr>
             </thead>
             <tbody>
     `;
 
     comp.partidas.forEach(ptda => {
-      compsHtml += `
+      html += `
         <tr>
           <td>Row ${ptda.row_id}</td>
           <td><strong>${ptda.ptda}</strong></td>
           <td><code>${ptda.clave_programatica}</code></td>
-          <td style="max-width: 280px; overflow: hidden; text-overflow: ellipsis;">${ptda.bien_servicio}</td>
+          <td style="max-width: 280px; overflow: hidden; text-overflow: ellipsis;" title="${ptda.bien_servicio}">${ptda.bien_servicio}</td>
           <td style="text-align: right;">${formatCurrency(ptda.modificado_sicop)}</td>
           <td style="text-align: right;">${formatCurrency(ptda.pagado_sicop)}</td>
           <td style="text-align: right; font-weight: 700; color: var(--color-sicop);">${formatCurrency(ptda.disponible_sicop)}</td>
-          <td style="font-size: 0.75rem; color: var(--text-muted);">${ptda.observaciones || '-'}</td>
         </tr>
       `;
     });
 
-    compsHtml += `
+    html += `
             </tbody>
           </table>
         </div>
@@ -560,17 +579,21 @@ window.openContractModal = function(contratoId) {
     `;
   });
 
-  listContainer.innerHTML = compsHtml;
-
-  // Show Modal
-  document.getElementById('contractModalOverlay').style.display = 'flex';
-  document.body.style.overflow = 'hidden';
+  modalBody.innerHTML = html;
+  document.getElementById('detailModal').style.display = 'flex';
 };
 
-window.closeContractModal = function() {
-  document.getElementById('contractModalOverlay').style.display = 'none';
-  document.body.style.overflow = 'auto';
+window.toggleModalAccordion = function(accId) {
+  const el = document.getElementById(accId);
+  if (el) {
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  }
 };
+
+function closeModal() {
+  const modal = document.getElementById('detailModal');
+  if (modal) modal.style.display = 'none';
+}
 
 function renderUnlinkedResources() {
   if (!fullData || !fullData.unlinked_resources) return;
