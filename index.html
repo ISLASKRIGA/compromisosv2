@@ -25,7 +25,7 @@
         <div class="brand-badge">INPer FINANZAS</div>
         <div>
           <h1 class="brand-title">Conciliación Financiera: SICOP vs. INPer</h1>
-          <p class="brand-subtitle">Visualizador Ejecutivo de Suficiencia Presupuestal y Conciliación por Contrato</p>
+          <p class="brand-subtitle">Base Maestra Corregida — Visualizador Ejecutivo por Contrato</p>
         </div>
       </div>
 
@@ -37,8 +37,8 @@
           <input type="number" id="toleranceInput" class="tolerance-input" value="0.01" step="0.01" min="0">
         </div>
 
-        <button id="btnExportExcel" class="btn-export" title="Descargar el archivo Excel original Pruebareporteejecutivo_validado_PCOM_CORREGIDO_DESGLOSE (2).xlsx">
-          📊 Descargar Excel Original (.xlsx)
+        <button id="btnExportExcel" class="btn-export" title="Descargar el archivo Excel oficial Base_Maestra_Corregida_SICOP_INPer.xlsx">
+          📊 Descargar Base Maestra (.xlsx)
         </button>
 
         <button id="btnExportCSV" class="btn-export" style="background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);" title="Exportar reporte conciliado de la tabla en CSV">
@@ -57,19 +57,19 @@
         <div class="conclusion-title">
           <span>📊</span> CONCLUSIÓN EJECUTIVA DE SUFICIENCIA PRESUPUESTAL (UNIVERSO CONCILIADO)
         </div>
-        <div id="conclusionStatusBadge" class="conclusion-badge badge-sobra">
-          SOBRA RECURSO POR $186,727,175.91
+        <div id="conclusionStatusBadge" class="conclusion-badge badge-falta">
+          FALTA RECURSO POR $89,983,468.92
         </div>
       </div>
       <div id="conclusionBody" class="conclusion-body">
-        Cargando datos y verificando valores de control obligatorios...
+        Cargando datos desde Base_Maestra_Corregida_SICOP_INPer.xlsx...
       </div>
     </section>
 
     <!-- Navigation Tabs -->
     <div class="tabs-container">
       <button class="tab-btn active" data-tab="dashboard">
-        📈 Tablero Ejecutivo (Universo Conciliado)
+        📈 Tablero Ejecutivo (Base Maestra Conciliada)
       </button>
       <button class="tab-btn" data-tab="unlinked">
         📌 Recursos Pendientes de Vinculación <span id="unlinkedCountBadge" class="badge-count">0</span>
@@ -85,21 +85,21 @@
       <!-- Mandatory KPI Grid -->
       <div class="kpi-grid">
         <div class="kpi-card" style="border-left: 4px solid var(--color-sicop);">
-          <div class="kpi-label">Disponible SICOP Conciliado</div>
-          <div id="kpiDisponibleSICOP" class="kpi-value" style="color: var(--color-sicop);">$388,037,428.57</div>
-          <div class="kpi-subtext">Valor de Control Obligatorio (AT)</div>
+          <div class="kpi-label">Disponible SICOP Real</div>
+          <div id="kpiDisponibleSICOP" class="kpi-value" style="color: var(--color-sicop);">$111,326,783.74</div>
+          <div class="kpi-subtext">Base Maestra Corregida (AT)</div>
         </div>
 
         <div class="kpi-card" style="border-left: 4px solid var(--color-inper);">
           <div class="kpi-label">Estimación INPer por Ejercer</div>
           <div id="kpiEstimacionINPer" class="kpi-value" style="color: var(--color-inper);">$201,310,252.66</div>
-          <div class="kpi-subtext">Valor de Control Obligatorio (AV)</div>
+          <div class="kpi-subtext">Base Maestra Corregida (AV)</div>
         </div>
 
-        <div class="kpi-card" style="border-left: 4px solid #10b981;">
-          <div class="kpi-label">Saldo de Suficiencia</div>
-          <div id="kpiSuficienciaNeta" class="kpi-value" style="color: #34d399;">+$186,727,175.91</div>
-          <div id="kpiSuficienciaSub" class="kpi-subtext">SOBRA RECURSO</div>
+        <div class="kpi-card" style="border-left: 4px solid #ef4444;">
+          <div class="kpi-label">Saldo Real de Suficiencia</div>
+          <div id="kpiSuficienciaNeta" class="kpi-value" style="color: #f87171;">-$89,983,468.92</div>
+          <div id="kpiSuficienciaSub" class="kpi-subtext">FALTA RECURSO</div>
         </div>
 
         <div class="kpi-card">
@@ -126,7 +126,7 @@
         <!-- Chart 1: Global Coverage Comparison -->
         <div class="chart-card">
           <div class="chart-header">
-            <div class="chart-title">Disponible SICOP vs. Estimación INPer</div>
+            <div class="chart-title">Disponible SICOP Real vs. Estimación INPer</div>
           </div>
           <div class="chart-container">
             <canvas id="chartSufficiency"></canvas>

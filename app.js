@@ -1,4 +1,4 @@
-// JavaScript for INPer - Visualizador Ejecutivo de Conciliación SICOP vs INPer
+// JavaScript for INPer - Visualizador Ejecutivo de Conciliación SICOP vs INPer (Base Maestra Corregida)
 
 let fullData = null;
 let currentStatusFilter = 'ALL';
@@ -107,7 +107,7 @@ function setupEventListeners() {
 }
 
 function downloadOriginalExcel() {
-  const excelFilename = 'Pruebareporteejecutivo_validado_PCOM_CORREGIDO_DESGLOSE (2).xlsx';
+  const excelFilename = 'Base_Maestra_Corregida_SICOP_INPer.xlsx';
   const encodedPath = encodeURIComponent(excelFilename);
   
   const link = document.createElement('a');
@@ -236,23 +236,30 @@ function renderConclusion() {
   const badgeEl = document.getElementById('conclusionStatusBadge');
   const bodyEl = document.getElementById('conclusionBody');
 
-  badgeEl.className = 'conclusion-badge badge-sobra';
-  badgeEl.innerText = ctrl.interpretacion;
+  if (suf >= 0) {
+    badgeEl.className = 'conclusion-badge badge-sobra';
+    badgeEl.innerText = ctrl.interpretacion;
+  } else {
+    badgeEl.className = 'conclusion-badge badge-falta';
+    badgeEl.innerText = ctrl.interpretacion;
+  }
 
   const topDeficit = [...fullData.contracts].sort((a, b) => a.suficiencia - b.suficiencia)[0];
+  const sufColorClass = suf >= 0 ? 'highlight-positive' : 'highlight-negative';
+  const sufTextColor = suf >= 0 ? '#34d399' : '#f87171';
 
   bodyEl.innerHTML = `
     <p>
-      El análisis de conciliación sobre el <strong>Universo de Compromisos Correctamente Identificados y Vinculados</strong> determina que:
+      El análisis de conciliación sobre la <strong>Base Maestra Corregida (Universo Conciliado)</strong> determina que:
     </p>
     <ul style="margin-top: 8px; margin-left: 20px; margin-bottom: 8px;">
-      <li><strong>Disponible SICOP Conciliado (AT)</strong>: <span class="highlight-val highlight-neutral">${formatCurrency(disp)}</span></li>
+      <li><strong>Disponible SICOP Real (AT)</strong>: <span class="highlight-val highlight-neutral">${formatCurrency(disp)}</span></li>
       <li><strong>Estimación INPer Conciliado (AV)</strong>: <span class="highlight-val highlight-neutral">${formatCurrency(est)}</span></li>
-      <li><strong>Saldo de Suficiencia Conciliado</strong>: <span class="highlight-val highlight-positive">${formatCurrency(suf)}</span></li>
-      <li><strong>Conclusión Financiera</strong>: <strong style="color: #34d399;">SOBRA RECURSO POR ${formatCurrency(suf)}</strong>.</li>
+      <li><strong>Saldo Real de Suficiencia</strong>: <span class="highlight-val ${sufColorClass}">${formatCurrency(suf)}</span></li>
+      <li><strong>Conclusión Financiera</strong>: <strong style="color: ${sufTextColor};">${ctrl.interpretacion}</strong>.</li>
     </ul>
     <p style="font-size: 0.9rem; color: var(--text-muted);">
-      <strong>Distribución del Universo Conciliado:</strong> <span style="color: #34d399; font-weight:700;">${totals.count_sobra} contratos</span> presentan Recurso Excedente ($${formatCurrency(totals.sobrante_total)}), 
+      <strong>Distribución de Contratos:</strong> <span style="color: #34d399; font-weight:700;">${totals.count_sobra} contratos</span> presentan Recurso Excedente ($${formatCurrency(totals.sobrante_total)}), 
       <span style="color: #fbbf24; font-weight:700;">${totals.count_equilibrado} contratos</span> se encuentran Equilibrados, y 
       <span style="color: #f87171; font-weight:700;">${totals.count_falta} contratos</span> presentan Insuficiencia Presupuestal (-$${formatCurrency(totals.faltante_total)}).
       ${topDeficit ? ` El mayor faltante individual corresponde al contrato <strong>${topDeficit.contrato}</strong> (${topDeficit.proveedor}) por <strong>${formatCurrency(topDeficit.suficiencia)}</strong>.` : ''}
@@ -273,6 +280,7 @@ function renderKPIs() {
   const sufEl = document.getElementById('kpiSuficienciaNeta');
   sufEl.innerText = formatCurrency(ctrl.saldo_suficiencia_conciliado);
   sufEl.style.color = ctrl.saldo_suficiencia_conciliado >= 0 ? '#34d399' : '#f87171';
+  document.getElementById('kpiSuficienciaSub').innerText = ctrl.saldo_suficiencia_conciliado >= 0 ? 'SOBRA RECURSO' : 'FALTA RECURSO';
 
   document.getElementById('kpiSobranteTotal').innerText = formatCurrency(totals.sobrante_total);
   document.getElementById('kpiSobranteSub').innerText = `${totals.count_sobra} Contratos con excedente`;
@@ -684,7 +692,7 @@ function exportToCSV() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', `Conciliacion_INPer_SICOP_${new Date().toISOString().slice(0, 10)}.csv`);
+  link.setAttribute('download', `Conciliacion_INPer_SICOP_BaseMaestra_${new Date().toISOString().slice(0, 10)}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
