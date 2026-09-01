@@ -498,60 +498,6 @@ body {
   background: rgba(56, 189, 248, 0.15);
 }
 
-/* Sub tables for Drill-down */
-.subtable-container {
-  background: var(--bg-dark);
-  padding: 12px 16px 16px 24px;
-  border-bottom: 1px solid var(--border-color);
-  overflow-x: auto;
-}
-
-.subtable-header {
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--color-sicop);
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-}
-
-.sub-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.8rem;
-  background: var(--bg-card);
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid var(--border-color);
-  min-width: 900px;
-}
-
-.sub-table th {
-  background: #162032;
-  color: var(--text-muted);
-  padding: 8px 12px;
-  font-size: 0.7rem;
-  white-space: nowrap;
-}
-
-.sub-table tr.commitment-row {
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.sub-table tr.commitment-row:hover {
-  background-color: #283548;
-}
-
-.sub-table td {
-  padding: 8px 12px;
-  border-bottom: 1px solid #283548;
-  white-space: nowrap;
-}
-
 /* Status Badges */
 .badge {
   display: inline-flex;
@@ -634,6 +580,219 @@ body {
 }
 
 /* ==========================================================================
+   EXECUTIVE POP-UP MODAL WINDOW STYLES
+   ========================================================================== */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(8px);
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-container {
+  background: #162032;
+  border: 1px solid var(--color-sicop);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 1150px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(30px) scale(0.97); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.modal-title-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.modal-icon {
+  font-size: 1.6rem;
+  background: rgba(56, 189, 248, 0.15);
+  padding: 8px 12px;
+  border-radius: 10px;
+  color: var(--color-sicop);
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.modal-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.modal-btn-close {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: 700;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.modal-btn-close:hover {
+  background: #ef4444;
+  color: #fff;
+  transform: rotate(90deg);
+}
+
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.modal-kpi-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.modal-kpi-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.modal-kpi-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.modal-section-title {
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--color-sicop);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+}
+
+.modal-commitments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-comp-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.modal-comp-header {
+  background: #111827;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-comp-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.modal-comp-financials {
+  display: flex;
+  gap: 16px;
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.modal-ptdas-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.modal-ptdas-table th {
+  background: #1e293b;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.modal-ptdas-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #283548;
+}
+
+/* ==========================================================================
    MEDIA QUERIES FOR 100% RESPONSIVE ADAPTATION
    ========================================================================== */
 
@@ -670,45 +829,27 @@ body {
     margin: 14px auto;
   }
 
-  .conclusion-card {
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .modal-header {
+    padding: 14px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .modal-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .modal-body {
     padding: 14px;
   }
 
-  .conclusion-title {
-    font-size: 0.95rem;
-  }
-
-  .conclusion-badge {
-    width: 100%;
-    text-align: center;
-  }
-
-  .kpi-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .charts-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .chart-container {
-    height: 200px;
-  }
-
-  .filter-bar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .filter-group {
-    justify-content: center;
-    width: 100%;
-  }
-
-  .subtable-container {
-    padding: 10px 10px 12px 12px;
+  .modal-kpi-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }
 

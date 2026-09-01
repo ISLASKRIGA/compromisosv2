@@ -6,8 +6,6 @@ let currentSearchQuery = '';
 let currentTolerance = 0.01; // Internal fixed precision threshold
 let currentSortCol = 'suficiencia';
 let currentSortAsc = false; // Default desc for numeric columns
-let expandedContracts = new Set();
-let expandedCommitments = new Set();
 
 let chartSufficiency = null;
 let chartDistribution = null;
@@ -125,6 +123,23 @@ function setupEventListeners() {
   if (btnExportExcel) {
     btnExportExcel.addEventListener('click', downloadOriginalExcel);
   }
+
+  // Modal Close Listeners
+  const btnModalClose = document.getElementById('btnModalClose');
+  if (btnModalClose) {
+    btnModalClose.addEventListener('click', closeContractModal);
+  }
+
+  const modalOverlay = document.getElementById('contractModalOverlay');
+  if (modalOverlay) {
+    modalOverlay.addEventListener('click', (e) => {
+      if (e.target === modalOverlay) closeContractModal();
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeContractModal();
+  });
 }
 
 function setFilterStatus(status) {
@@ -432,13 +447,12 @@ function renderTable() {
   let html = '';
 
   sorted.forEach(c => {
-    const isExpanded = expandedContracts.has(c.contrato);
     const badgeClass = c.estatus === 'SOBRA RECURSO' ? 'badge-sobra' : (c.estatus === 'FALTA RECURSO' ? 'badge-falta' : 'badge-equilibrado');
 
     html += `
-      <tr class="contract-row" onclick="toggleContract('${c.contrato}')" data-contrato="${c.contrato}">
-        <td style="text-align: center;">
-          <button class="btn-toggle">${isExpanded ? '▼' : '▶'}</button>
+      <tr class="contract-row" onclick="openContractModal('${c.contrato}')" data-contrato="${c.contrato}" title="Haz clic para abrir el detalle completo del contrato ${c.contrato}">
+        <td style="text-align: center; color: var(--color-sicop); font-weight: bold;">
+          🔍
         </td>
         <td><strong>${c.contrato}</strong></td>
         <td title="${c.proveedor}" style="max-width: 220px; overflow: hidden; text-overflow: ellipsis;">${c.proveedor}</td>
@@ -454,137 +468,108 @@ function renderTable() {
         <td style="text-align: center;"><span class="badge ${badgeClass}">${c.estatus}</span></td>
       </tr>
     `;
-
-    if (isExpanded) {
-      html += `
-        <tr>
-          <td colspan="13" style="padding: 0;">
-            <div class="subtable-container">
-              <div class="subtable-header">
-                <span>📑</span> COMPROMISOS DEL CONTRATO ${c.contrato} (${c.compromisos.length} FOLIOS)
-              </div>
-              <table class="sub-table">
-                <thead>
-                  <tr>
-                    <th style="width: 30px;"></th>
-                    <th>Folio Compromiso</th>
-                    <th>Área Solicitante / Servicio</th>
-                    <th style="text-align: center;">Partidas</th>
-                    <th style="text-align: right;">Modif. SICOP</th>
-                    <th style="text-align: right;">Modif. INPer</th>
-                    <th style="text-align: right;">Pagado SICOP</th>
-                    <th style="text-align: right;">Pagado INPer</th>
-                    <th style="text-align: right; color: var(--color-sicop);">Disponible SICOP</th>
-                    <th style="text-align: right; color: var(--color-inper);">Estimación INPer</th>
-                    <th style="text-align: right;">Suficiencia</th>
-                    <th style="text-align: center;">Estatus</th>
-                  </tr>
-                </thead>
-                <tbody>
-      `;
-
-      c.compromisos.forEach(comp => {
-        const compKey = `${c.contrato}_${comp.folio}`;
-        const isCompExpanded = expandedCommitments.has(compKey);
-        const compBadgeClass = comp.estatus === 'SOBRA RECURSO' ? 'badge-sobra' : (comp.estatus === 'FALTA RECURSO' ? 'badge-falta' : 'badge-equilibrado');
-
-        html += `
-          <tr class="commitment-row" onclick="toggleCommitment('${compKey}')">
-            <td style="text-align: center;">
-              <button class="btn-toggle">${isCompExpanded ? '▼' : '▶'}</button>
-            </td>
-            <td><strong>Folio ${comp.folio}</strong></td>
-            <td title="${comp.servicio}" style="max-width: 250px; overflow: hidden; text-overflow: ellipsis;">${comp.servicio}</td>
-            <td style="text-align: center;">${comp.partidas_count}</td>
-            <td style="text-align: right;">${formatCurrency(comp.modificado_sicop)}</td>
-            <td style="text-align: right;">${formatCurrency(comp.modificado_inper)}</td>
-            <td style="text-align: right;">${formatCurrency(comp.pagado_sicop)}</td>
-            <td style="text-align: right;">${formatCurrency(comp.pagado_inper)}</td>
-            <td style="text-align: right; font-weight: 600; color: var(--color-sicop);">${formatCurrency(comp.disponible_sicop)}</td>
-            <td style="text-align: right; font-weight: 600; color: var(--color-inper);">${formatCurrency(comp.estimacion_inper)}</td>
-            <td style="text-align: right; font-weight: 700; color: ${comp.suficiencia >= 0 ? '#34d399' : '#f87171'};">${formatCurrency(comp.suficiencia)}</td>
-            <td style="text-align: center;"><span class="badge ${compBadgeClass}">${comp.estatus}</span></td>
-          </tr>
-        `;
-
-        if (isCompExpanded) {
-          html += `
-            <tr>
-              <td colspan="12" style="padding: 0;">
-                <div style="background: #111827; padding: 10px 16px 14px 40px;">
-                  <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; margin-bottom: 6px;">
-                    📌 DESGLOSE DE PARTIDAS PRESUPUESTALES SICOP (FOLIO ${comp.folio})
-                  </div>
-                  <table class="sub-table" style="background: #1f2937;">
-                    <thead>
-                      <tr style="background: #111827;">
-                        <th>Fila Excel</th>
-                        <th>PTDA</th>
-                        <th>Clave Programática (F-FN-SF-RG-AI-PP)</th>
-                        <th>Bien o Servicio Desglosado</th>
-                        <th style="text-align: right;">Modificado SICOP</th>
-                        <th style="text-align: right;">Pagado SICOP</th>
-                        <th style="text-align: right; color: var(--color-sicop);">Disponible SICOP</th>
-                        <th>Observaciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-          `;
-
-          comp.partidas.forEach(ptda => {
-            html += `
-              <tr>
-                <td>Row ${ptda.row_id}</td>
-                <td><strong>${ptda.ptda}</strong></td>
-                <td><code>${ptda.clave_programatica}</code></td>
-                <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${ptda.bien_servicio}</td>
-                <td style="text-align: right;">${formatCurrency(ptda.modificado_sicop)}</td>
-                <td style="text-align: right;">${formatCurrency(ptda.pagado_sicop)}</td>
-                <td style="text-align: right; font-weight: 600; color: var(--color-sicop);">${formatCurrency(ptda.disponible_sicop)}</td>
-                <td style="font-size: 0.75rem; color: var(--text-muted);">${ptda.observaciones || '-'}</td>
-              </tr>
-            `;
-          });
-
-          html += `
-                    </tbody>
-                  </table>
-                </div>
-              </td>
-            </tr>
-          `;
-        }
-      });
-
-      html += `
-                </tbody>
-              </table>
-            </div>
-          </td>
-        </tr>
-      `;
-    }
   });
 
   tbody.innerHTML = html;
 }
 
-window.toggleContract = function(contrato) {
-  if (expandedContracts.has(contrato)) {
-    expandedContracts.delete(contrato);
-  } else {
-    expandedContracts.add(contrato);
-  }
-  renderTable();
+// Open Pop-up Modal Window for Contract Detail
+window.openContractModal = function(contratoId) {
+  if (!fullData || !fullData.contracts) return;
+  const contract = fullData.contracts.find(c => c.contrato === contratoId);
+  if (!contract) return;
+
+  document.getElementById('modalContractTitle').innerText = `Contrato ${contract.contrato}`;
+  document.getElementById('modalContractSubtitle').innerText = contract.proveedor !== 'N/A' ? contract.proveedor : contract.servicio;
+
+  const badgeEl = document.getElementById('modalContractBadge');
+  badgeEl.className = `conclusion-badge ${contract.estatus === 'SOBRA RECURSO' ? 'badge-sobra' : (contract.estatus === 'FALTA RECURSO' ? 'badge-falta' : 'badge-equilibrado')}`;
+  badgeEl.innerText = contract.estatus;
+
+  // Modal KPIs
+  document.getElementById('modalDisponibleSICOP').innerText = formatCurrency(contract.disponible_sicop);
+  document.getElementById('modalEstimacionINPer').innerText = formatCurrency(contract.estimacion_inper);
+
+  const sufEl = document.getElementById('modalSuficiencia');
+  sufEl.innerText = formatCurrency(contract.suficiencia);
+  sufEl.style.color = contract.suficiencia >= 0 ? '#34d399' : '#f87171';
+
+  document.getElementById('modalModificado').innerText = `${formatCurrency(contract.modificado_sicop)} / ${formatCurrency(contract.modificado_inper)}`;
+  document.getElementById('modalPagado').innerText = `${formatCurrency(contract.pagado_sicop)} / ${formatCurrency(contract.pagado_inper)}`;
+
+  document.getElementById('modalFoliosCount').innerText = contract.compromisos.length;
+
+  // Render Commitments inside Modal
+  const listContainer = document.getElementById('modalCommitmentsList');
+  let compsHtml = '';
+
+  contract.compromisos.forEach(comp => {
+    const compBadgeClass = comp.estatus === 'SOBRA RECURSO' ? 'badge-sobra' : (comp.estatus === 'FALTA RECURSO' ? 'badge-falta' : 'badge-equilibrado');
+
+    compsHtml += `
+      <div class="modal-comp-card">
+        <div class="modal-comp-header">
+          <div class="modal-comp-title">
+            📌 Folio de Compromiso ${comp.folio} — <span style="color: var(--text-muted); font-weight: normal;">${comp.servicio}</span>
+          </div>
+          <div class="modal-comp-financials">
+            <div><span style="color:var(--text-muted);">Disponible SICOP:</span> <strong style="color:var(--color-sicop);">${formatCurrency(comp.disponible_sicop)}</strong></div>
+            <div><span style="color:var(--text-muted);">Estimación INPer:</span> <strong style="color:var(--color-inper);">${formatCurrency(comp.estimacion_inper)}</strong></div>
+            <div><span style="color:var(--text-muted);">Suficiencia:</span> <strong style="color: ${comp.suficiencia >= 0 ? '#34d399' : '#f87171'};">${formatCurrency(comp.suficiencia)}</strong></div>
+            <span class="badge ${compBadgeClass}">${comp.estatus}</span>
+          </div>
+        </div>
+
+        <div style="padding: 12px; overflow-x: auto;">
+          <table class="modal-ptdas-table">
+            <thead>
+              <tr>
+                <th>Fila Excel</th>
+                <th>PTDA</th>
+                <th>Clave Programática (F-FN-SF-RG-AI-PP)</th>
+                <th>Bien o Servicio Desglosado</th>
+                <th style="text-align: right;">Modif. SICOP</th>
+                <th style="text-align: right;">Pagado SICOP</th>
+                <th style="text-align: right; color: var(--color-sicop);">Disponible SICOP</th>
+                <th>Observaciones</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+
+    comp.partidas.forEach(ptda => {
+      compsHtml += `
+        <tr>
+          <td>Row ${ptda.row_id}</td>
+          <td><strong>${ptda.ptda}</strong></td>
+          <td><code>${ptda.clave_programatica}</code></td>
+          <td style="max-width: 280px; overflow: hidden; text-overflow: ellipsis;">${ptda.bien_servicio}</td>
+          <td style="text-align: right;">${formatCurrency(ptda.modificado_sicop)}</td>
+          <td style="text-align: right;">${formatCurrency(ptda.pagado_sicop)}</td>
+          <td style="text-align: right; font-weight: 700; color: var(--color-sicop);">${formatCurrency(ptda.disponible_sicop)}</td>
+          <td style="font-size: 0.75rem; color: var(--text-muted);">${ptda.observaciones || '-'}</td>
+        </tr>
+      `;
+    });
+
+    compsHtml += `
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  });
+
+  listContainer.innerHTML = compsHtml;
+
+  // Show Modal
+  document.getElementById('contractModalOverlay').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
 };
 
-window.toggleCommitment = function(compKey) {
-  if (expandedCommitments.has(compKey)) {
-    expandedCommitments.delete(compKey);
-  } else {
-    expandedCommitments.add(compKey);
-  }
-  renderTable();
+window.closeContractModal = function() {
+  document.getElementById('contractModalOverlay').style.display = 'none';
+  document.body.style.overflow = 'auto';
 };
 
 function renderUnlinkedResources() {
