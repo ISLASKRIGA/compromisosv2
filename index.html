@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>INPer — Conciliador Financiero SICOP vs. INPer</title>
+
+  <!-- Google Fonts Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Navbar -->
+  <header class="navbar">
+    <div class="navbar-container">
+      <div class="brand-section">
+        <div class="brand-badge">INPer FINANZAS</div>
+        <div>
+          <h1 class="brand-title">Conciliación Financiera: SICOP vs. INPer</h1>
+          <p class="brand-subtitle">Visualizador Ejecutivo de Suficiencia Presupuestal y Conciliación por Contrato</p>
+        </div>
+      </div>
+
+      <div class="nav-controls">
+        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Buscar contrato, proveedor, UR, folio...">
+        
+        <div class="tolerance-control">
+          <span>Tolerancia (±):</span>
+          <input type="number" id="toleranceInput" class="tolerance-input" value="0.01" step="0.01" min="0">
+        </div>
+
+        <button id="btnExportCSV" class="btn-export">
+          📥 Exportar CSV
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="main-container">
+
+    <!-- Executive Conclusion Banner -->
+    <section class="conclusion-card">
+      <div class="conclusion-header">
+        <div class="conclusion-title">
+          <span>📊</span> DIAGNÓSTICO FINANCIERO Y CONCLUSIÓN EJECUTIVA AUTOMÁTICA
+        </div>
+        <div id="conclusionStatusBadge" class="conclusion-badge badge-sobra">
+          SOBRA RECURSO
+        </div>
+      </div>
+      <div id="conclusionBody" class="conclusion-body">
+        Cargando datos y generando conclusión ejecutiva...
+      </div>
+    </section>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs-container">
+      <button class="tab-btn active" data-tab="dashboard">
+        📈 Tablero Ejecutivo & Gráficas
+      </button>
+      <button class="tab-btn" data-tab="audit">
+        ⚠️ Registros que Requieren Revisión <span id="auditCountBadge" class="badge-count">0</span>
+      </button>
+    </div>
+
+    <!-- TAB 1: DASHBOARD & TABLE -->
+    <div id="tabDashboard">
+      
+      <!-- KPI Grid -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Recurso Disponible SICOP</div>
+          <div id="kpiDisponibleSICOP" class="kpi-value">$0.00</div>
+          <div class="kpi-subtext">Fuente fidedigna (AT)</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">Estimación INPer por Ejercer</div>
+          <div id="kpiEstimacionINPer" class="kpi-value">$0.00</div>
+          <div class="kpi-subtext">Captura manual (AV)</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">Suficiencia Neta Global</div>
+          <div id="kpiSuficienciaNeta" class="kpi-value">$0.00</div>
+          <div id="kpiSuficienciaSub" class="kpi-subtext">Disponible − Estimación</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">Sobrante Total Acumulado</div>
+          <div id="kpiSobranteTotal" class="kpi-value" style="color: #34d399;">$0.00</div>
+          <div id="kpiSobranteSub" class="kpi-subtext">0 Contratos con excedente</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">Faltante Total Acumulado</div>
+          <div id="kpiFaltanteTotal" class="kpi-value" style="color: #f87171;">$0.00</div>
+          <div id="kpiFaltanteSub" class="kpi-subtext">0 Contratos con insuficiencia</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">Contratos Analizados</div>
+          <div id="kpiTotalContratos" class="kpi-value">0</div>
+          <div id="kpiCompromisosSub" class="kpi-subtext">0 Compromisos | 0 Partidas</div>
+        </div>
+      </div>
+
+      <!-- Charts Section -->
+      <div class="charts-grid">
+        <!-- Chart 1: Global Coverage Comparison -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Disponible SICOP vs. Estimación INPer</div>
+          </div>
+          <div class="chart-container">
+            <canvas id="chartSufficiency"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 2: Status Distribution -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Distribución por Estatus de Suficiencia</div>
+          </div>
+          <div class="chart-container">
+            <canvas id="chartDistribution"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 3: Top Rankings -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Top Rankings de Impacto</div>
+            <select id="rankingSelect" style="background: var(--bg-dark); color: #fff; border: 1px solid var(--border-color); padding: 4px 8px; border-radius: 6px; font-size: 0.8rem;">
+              <option value="faltante">Mayor Faltante de Recurso</option>
+              <option value="sobrante">Mayor Sobrante de Recurso</option>
+              <option value="modificado">Mayor Dif. Modificado</option>
+              <option value="pagado">Mayor Dif. Pagado</option>
+            </select>
+          </div>
+          <div class="chart-container">
+            <canvas id="chartRanking"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <div class="filter-group">
+          <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Filtrar por Estatus:</span>
+          <button class="filter-btn active" data-status="ALL">Todos</button>
+          <button class="filter-btn sobra" data-status="SOBRA RECURSO">🟢 Sobra Recurso</button>
+          <button class="filter-btn equilibrado" data-status="EQUILIBRADO">🟡 Equilibrado</button>
+          <button class="filter-btn falta" data-status="FALTA RECURSO">🔴 Falta Recurso</button>
+        </div>
+
+        <div style="font-size: 0.85rem; color: var(--text-muted);">
+          Mostrando <strong id="lblRecordCount" style="color: #fff;">0</strong> contratos
+        </div>
+      </div>
+
+      <!-- Executive Table -->
+      <div class="table-container">
+        <table class="exec-table">
+          <thead>
+            <tr>
+              <th style="width: 40px;"></th>
+              <th data-sort="contrato">No. Contrato ↕</th>
+              <th data-sort="proveedor">Proveedor ↕</th>
+              <th data-sort="folios_count" style="text-align: center;">Folios ↕</th>
+              <th data-sort="modificado_sicop" style="text-align: right;">Modif. SICOP ↕</th>
+              <th data-sort="modificado_inper" style="text-align: right;">Modif. INPer ↕</th>
+              <th data-sort="dif_modificado" style="text-align: right;">Dif. Modif. ↕</th>
+              <th data-sort="pagado_sicop" style="text-align: right;">Pagado SICOP ↕</th>
+              <th data-sort="pagado_inper" style="text-align: right;">Pagado INPer ↕</th>
+              <th data-sort="disponible_sicop" style="text-align: right; color: var(--color-sicop);">Disponible SICOP (AT) ↕</th>
+              <th data-sort="estimacion_inper" style="text-align: right; color: var(--color-inper);">Estimación INPer (AV) ↕</th>
+              <th data-sort="suficiencia" style="text-align: right;">Saldo Suficiencia ↕</th>
+              <th data-sort="estatus" style="text-align: center;">Estatus ↕</th>
+            </tr>
+          </thead>
+          <tbody id="contractsTableBody">
+            <!-- Dynamic rows injected by JS -->
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <!-- TAB 2: AUDIT & DATA QUALITY -->
+    <div id="tabAudit" style="display: none;">
+      
+      <div class="audit-grid">
+        <div class="audit-card">
+          <div class="audit-card-title">
+            <span>⚠️</span> Registros en SICOP sin Captura INPer
+          </div>
+          <div class="audit-card-desc">
+            Compromisos que tienen importe registrado en SICOP pero donde INPer no ha capturado valores de modificado/estimación.
+          </div>
+          <div id="auditSicopOnlyList" class="audit-list">
+            <!-- Injected by JS -->
+          </div>
+        </div>
+
+        <div class="audit-card">
+          <div class="audit-card-title">
+            <span>⚠️</span> Registros en INPer sin Registro en SICOP
+          </div>
+          <div class="audit-card-desc">
+            Compromisos que tienen estimación manual capturada por INPer pero cuyo compromiso no existe o está en 0 en SICOP.
+          </div>
+          <div id="auditInperOnlyList" class="audit-list">
+            <!-- Injected by JS -->
+          </div>
+        </div>
+
+        <div class="audit-card">
+          <div class="audit-card-title">
+            <span>🔍</span> Contratos con Discrepancias Extremas (> $1,000,000)
+          </div>
+          <div class="audit-card-desc">
+            Contratos donde la suficiencia presupuestal o la diferencia de modificado supera $1,000,000. Requieren revisión prioritaria.
+          </div>
+          <div id="auditExtremeList" class="audit-list">
+            <!-- Injected by JS -->
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
