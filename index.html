@@ -38,10 +38,6 @@
         <button id="btnExportExcel" class="btn-export" title="Descargar el archivo Excel oficial Base_Maestra_Corregida_SICOP_INPer.xlsx">
           📊 Descargar Base Maestra (.xlsx)
         </button>
-
-        <button id="btnExportCSV" class="btn-export" style="background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);" title="Exportar reporte conciliado de la tabla en CSV">
-          📥 Exportar CSV
-        </button>
       </div>
     </div>
   </header>
@@ -80,39 +76,39 @@
     <!-- TAB 1: DASHBOARD & TABLE -->
     <div id="tabDashboard">
       
-      <!-- Mandatory KPI Grid -->
+      <!-- Mandatory KPI Grid (Clickable Cards) -->
       <div class="kpi-grid">
-        <div class="kpi-card" style="border-left: 4px solid var(--color-sicop);">
+        <div id="cardDisponibleSICOP" class="kpi-card clickable-card" style="border-left: 4px solid var(--color-sicop);" title="Haz clic para ver todos los contratos conciliados">
           <div class="kpi-label">Disponible SICOP Real</div>
           <div id="kpiDisponibleSICOP" class="kpi-value" style="color: var(--color-sicop);">$111,326,783.74</div>
           <div class="kpi-subtext">Base Maestra Corregida (AT)</div>
         </div>
 
-        <div class="kpi-card" style="border-left: 4px solid var(--color-inper);">
+        <div id="cardEstimacionINPer" class="kpi-card clickable-card" style="border-left: 4px solid var(--color-inper);" title="Haz clic para ver todos los contratos conciliados">
           <div class="kpi-label">Estimación INPer por Ejercer</div>
           <div id="kpiEstimacionINPer" class="kpi-value" style="color: var(--color-inper);">$201,310,252.66</div>
           <div class="kpi-subtext">Base Maestra Corregida (AV)</div>
         </div>
 
-        <div class="kpi-card" style="border-left: 4px solid #ef4444;">
+        <div id="cardSuficienciaNeta" class="kpi-card clickable-card" style="border-left: 4px solid #ef4444;" title="Haz clic para ver el balance de suficiencia">
           <div class="kpi-label">Saldo Real de Suficiencia</div>
           <div id="kpiSuficienciaNeta" class="kpi-value" style="color: #f87171;">-$89,983,468.92</div>
           <div id="kpiSuficienciaSub" class="kpi-subtext">FALTA RECURSO</div>
         </div>
 
-        <div class="kpi-card">
+        <div id="cardSobranteTotal" class="kpi-card clickable-card" style="border-left: 4px solid #34d399;" title="Haz clic para ver únicamente los contratos con SOBRANTE DE RECURSO">
           <div class="kpi-label">Sobrante Total Acumulado</div>
           <div id="kpiSobranteTotal" class="kpi-value" style="color: #34d399;">$0.00</div>
           <div id="kpiSobranteSub" class="kpi-subtext">0 Contratos con excedente</div>
         </div>
 
-        <div class="kpi-card">
+        <div id="cardFaltanteTotal" class="kpi-card clickable-card" style="border-left: 4px solid #f87171;" title="Haz clic para ver únicamente los contratos con FALTA DE RECURSO">
           <div class="kpi-label">Faltante Total Acumulado</div>
           <div id="kpiFaltanteTotal" class="kpi-value" style="color: #f87171;">$0.00</div>
           <div id="kpiFaltanteSub" class="kpi-subtext">0 Contratos con insuficiencia</div>
         </div>
 
-        <div class="kpi-card">
+        <div id="cardTotalContratos" class="kpi-card clickable-card" style="border-left: 4px solid #94a3b8;" title="Haz clic para restablecer el filtro y ver todos los contratos">
           <div class="kpi-label">Universo Conciliado</div>
           <div id="kpiTotalContratos" class="kpi-value">0</div>
           <div id="kpiCompromisosSub" class="kpi-subtext">0 Compromisos Conciliados</div>
@@ -169,7 +165,7 @@
         </div>
 
         <div style="font-size: 0.85rem; color: var(--text-muted);">
-          Mostrando <strong id="lblRecordCount" style="color: #fff;">0</strong> contratos
+          Mostrando <strong id="lblRecordCount" style="color: #fff;">0</strong> contratos (haz clic en cualquier fila para ver el desglose)
         </div>
       </div>
 

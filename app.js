@@ -45,12 +45,43 @@ function setupEventListeners() {
   const filterBtns = document.querySelectorAll('.filter-btn');
   filterBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      filterBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentStatusFilter = btn.dataset.status;
-      renderTableAndKPIs();
+      setFilterStatus(btn.dataset.status);
     });
   });
+
+  // KPI Card clicks (Interactive Filtering)
+  const cardSobrante = document.getElementById('cardSobranteTotal');
+  if (cardSobrante) {
+    cardSobrante.addEventListener('click', () => setFilterStatus('SOBRA RECURSO'));
+  }
+
+  const cardFaltante = document.getElementById('cardFaltanteTotal');
+  if (cardFaltante) {
+    cardFaltante.addEventListener('click', () => setFilterStatus('FALTA RECURSO'));
+  }
+
+  const cardTotal = document.getElementById('cardTotalContratos');
+  if (cardTotal) {
+    cardTotal.addEventListener('click', () => setFilterStatus('ALL'));
+  }
+
+  const cardDisp = document.getElementById('cardDisponibleSICOP');
+  if (cardDisp) {
+    cardDisp.addEventListener('click', () => setFilterStatus('ALL'));
+  }
+
+  const cardEst = document.getElementById('cardEstimacionINPer');
+  if (cardEst) {
+    cardEst.addEventListener('click', () => setFilterStatus('ALL'));
+  }
+
+  const cardSuf = document.getElementById('cardSuficienciaNeta');
+  if (cardSuf) {
+    cardSuf.addEventListener('click', () => {
+      const netSuf = fullData ? fullData.mandatory_control_values.saldo_suficiencia_conciliado : 0;
+      setFilterStatus(netSuf >= 0 ? 'SOBRA RECURSO' : 'FALTA RECURSO');
+    });
+  }
 
   // Tab navigation
   const tabBtns = document.querySelectorAll('.tab-btn[data-tab]');
@@ -94,12 +125,22 @@ function setupEventListeners() {
   if (btnExportExcel) {
     btnExportExcel.addEventListener('click', downloadOriginalExcel);
   }
+}
 
-  // Export CSV
-  const btnExportCSV = document.getElementById('btnExportCSV');
-  if (btnExportCSV) {
-    btnExportCSV.addEventListener('click', exportToCSV);
-  }
+function setFilterStatus(status) {
+  currentStatusFilter = status;
+
+  // Update active state of filter buttons
+  const filterBtns = document.querySelectorAll('.filter-btn');
+  filterBtns.forEach(btn => {
+    if (btn.dataset.status === status) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  renderTableAndKPIs();
 }
 
 function downloadOriginalExcel() {
@@ -112,48 +153,6 @@ function downloadOriginalExcel() {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-}
-
-function recalculateStatuses() {
-  if (!fullData || !fullData.contracts) return;
-
-  let countSobra = 0;
-  let countEquilibrado = 0;
-  let countFalta = 0;
-  let sobranteTotal = 0;
-  let faltanteTotal = 0;
-
-  fullData.contracts.forEach(c => {
-    const suf = c.disponible_sicop - c.estimacion_inper;
-    c.suficiencia = suf;
-
-    if (suf > currentTolerance) {
-      c.estatus = 'SOBRA RECURSO';
-      countSobra++;
-      sobranteTotal += suf;
-    } else if (suf < -currentTolerance) {
-      c.estatus = 'FALTA RECURSO';
-      countFalta++;
-      faltanteTotal += Math.abs(suf);
-    } else {
-      c.estatus = 'EQUILIBRADO';
-      countEquilibrado++;
-    }
-
-    c.compromisos.forEach(comp => {
-      const compSuf = comp.disponible_sicop - comp.estimacion_inper;
-      comp.suficiencia = compSuf;
-      if (compSuf > currentTolerance) comp.estatus = 'SOBRA RECURSO';
-      else if (compSuf < -currentTolerance) comp.estatus = 'FALTA RECURSO';
-      else comp.estatus = 'EQUILIBRADO';
-    });
-  });
-
-  fullData.global_totals.count_sobra = countSobra;
-  fullData.global_totals.count_equilibrado = countEquilibrado;
-  fullData.global_totals.count_falta = countFalta;
-  fullData.global_totals.sobrante_total = sobranteTotal;
-  fullData.global_totals.faltante_total = faltanteTotal;
 }
 
 function getFilteredContracts() {
@@ -437,9 +436,9 @@ function renderTable() {
     const badgeClass = c.estatus === 'SOBRA RECURSO' ? 'badge-sobra' : (c.estatus === 'FALTA RECURSO' ? 'badge-falta' : 'badge-equilibrado');
 
     html += `
-      <tr class="contract-row" data-contrato="${c.contrato}">
+      <tr class="contract-row" onclick="toggleContract('${c.contrato}')" data-contrato="${c.contrato}">
         <td style="text-align: center;">
-          <button class="btn-toggle" onclick="toggleContract('${c.contrato}')">${isExpanded ? '▼' : '▶'}</button>
+          <button class="btn-toggle">${isExpanded ? '▼' : '▶'}</button>
         </td>
         <td><strong>${c.contrato}</strong></td>
         <td title="${c.proveedor}" style="max-width: 220px; overflow: hidden; text-overflow: ellipsis;">${c.proveedor}</td>
@@ -490,9 +489,9 @@ function renderTable() {
         const compBadgeClass = comp.estatus === 'SOBRA RECURSO' ? 'badge-sobra' : (comp.estatus === 'FALTA RECURSO' ? 'badge-falta' : 'badge-equilibrado');
 
         html += `
-          <tr>
+          <tr class="commitment-row" onclick="toggleCommitment('${compKey}')">
             <td style="text-align: center;">
-              <button class="btn-toggle" onclick="toggleCommitment('${compKey}')">${isCompExpanded ? '▼' : '▶'}</button>
+              <button class="btn-toggle">${isCompExpanded ? '▼' : '▶'}</button>
             </td>
             <td><strong>Folio ${comp.folio}</strong></td>
             <td title="${comp.servicio}" style="max-width: 250px; overflow: hidden; text-overflow: ellipsis;">${comp.servicio}</td>
@@ -650,46 +649,4 @@ function renderAudit() {
       <div style="font-weight:700; color: ${item.suficiencia >= 0 ? '#34d399' : '#f87171'};">${formatCurrency(item.suficiencia)}</div>
     </div>
   `).join('');
-}
-
-function exportToCSV() {
-  const filtered = getFilteredContracts();
-  const headers = [
-    'Contrato', 'Proveedor', 'UR', 'Folios_Count', 'Partidas_Count',
-    'Modificado_SICOP', 'Modificado_INPer', 'Diferencia_Modificado',
-    'Pagado_SICOP', 'Pagado_INPer', 'Diferencia_Pagado',
-    'Disponible_SICOP_AT', 'Estimacion_INPer_AV', 'Saldo_Suficiencia', 'Estatus'
-  ];
-
-  let csvContent = headers.join(',') + '\n';
-
-  filtered.forEach(c => {
-    const row = [
-      `"${c.contrato}"`,
-      `"${c.proveedor.replace(/"/g, '""')}"`,
-      `"${c.ur}"`,
-      c.folios_count,
-      c.partidas_count,
-      c.modificado_sicop,
-      c.modificado_inper,
-      c.dif_modificado,
-      c.pagado_sicop,
-      c.pagado_inper,
-      c.dif_pagado,
-      c.disponible_sicop,
-      c.estimacion_inper,
-      c.suficiencia,
-      `"${c.estatus}"`
-    ];
-    csvContent += row.join(',') + '\n';
-  });
-
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', `Conciliacion_INPer_SICOP_BaseMaestra_${new Date().toISOString().slice(0, 10)}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
 }
