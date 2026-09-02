@@ -120,10 +120,16 @@ function setupEventListeners() {
     });
   }
 
-  // Export Excel Original
+  // Export Excel Original (Base Maestra)
   const btnExportExcel = document.getElementById('btnExportExcel');
   if (btnExportExcel) {
     btnExportExcel.addEventListener('click', downloadOriginalExcel);
+  }
+
+  // Export Excel Reporte Ejecutivo
+  const btnExportReporte = document.getElementById('btnExportReporte');
+  if (btnExportReporte) {
+    btnExportReporte.addEventListener('click', downloadReporteExcel);
   }
 }
 
@@ -145,6 +151,18 @@ function setFilterStatus(status) {
 
 function downloadOriginalExcel() {
   const excelFilename = 'Base_Maestra_Corregida_SICOP_INPer.xlsx';
+  const encodedPath = encodeURIComponent(excelFilename);
+  
+  const link = document.createElement('a');
+  link.href = encodedPath;
+  link.download = excelFilename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function downloadReporteExcel() {
+  const excelFilename = 'Pruebareporteejecutivo_validado_PCOM_CM_correcto.xlsx';
   const encodedPath = encodeURIComponent(excelFilename);
   
   const link = document.createElement('a');
