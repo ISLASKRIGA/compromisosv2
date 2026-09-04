@@ -13,6 +13,9 @@ let chartSufficiency = null;
 let chartDistribution = null;
 let chartRanking = null;
 
+let currentClavesSearchQuery = '';
+let currentPartidaFilter = 'ALL';
+
 document.addEventListener('DOMContentLoaded', () => {
   initApp();
 });
@@ -41,8 +44,28 @@ function setupEventListeners() {
     });
   }
 
+  // Claves search input
+  const clavesSearchInput = document.getElementById('clavesSearchInput');
+  if (clavesSearchInput) {
+    clavesSearchInput.addEventListener('input', (e) => {
+      currentClavesSearchQuery = e.target.value.toLowerCase().trim();
+      renderClavesTable();
+    });
+  }
+
+  // Claves Partida filter buttons
+  const partidaBtns = document.querySelectorAll('.filter-btn[data-partida]');
+  partidaBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      partidaBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentPartidaFilter = btn.dataset.partida;
+      renderClavesTable();
+    });
+  });
+
   // Filter status buttons
-  const filterBtns = document.querySelectorAll('.filter-btn');
+  const filterBtns = document.querySelectorAll('.filter-btn[data-status]');
   filterBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       setFilterStatus(btn.dataset.status);
@@ -63,6 +86,14 @@ function setupEventListeners() {
   const cardTotal = document.getElementById('cardTotalContratos');
   if (cardTotal) {
     cardTotal.addEventListener('click', () => setFilterStatus('ALL'));
+  }
+
+  const cardClaves = document.getElementById('cardClavesAdquiridas');
+  if (cardClaves) {
+    cardClaves.addEventListener('click', () => {
+      const tabClavesBtn = document.querySelector('.tab-btn[data-tab="claves"]');
+      if (tabClavesBtn) tabClavesBtn.click();
+    });
   }
 
   const cardDisp = document.getElementById('cardDisponibleSICOP');
@@ -94,8 +125,22 @@ function setupEventListeners() {
       document.getElementById('tabDashboard').style.display = targetTab === 'dashboard' ? 'block' : 'none';
       document.getElementById('tabUnlinked').style.display = targetTab === 'unlinked' ? 'block' : 'none';
       document.getElementById('tabAudit').style.display = targetTab === 'audit' ? 'block' : 'none';
+      document.getElementById('tabClaves').style.display = targetTab === 'claves' ? 'block' : 'none';
+      if (targetTab === 'claves') renderClavesTable();
     });
   });
+
+  // Modal Close
+  const closeBtn = document.getElementById('closeClavesModal');
+  const modal = document.getElementById('clavesModal');
+  if (closeBtn && modal) {
+    closeBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.style.display = 'none';
+    });
+  }
 
   // Table header sorting
   const tableHeaders = document.querySelectorAll('.exec-table th[data-sort]');
@@ -303,6 +348,18 @@ function renderKPIs() {
 
   document.getElementById('kpiTotalContratos').innerText = filtered.length;
   document.getElementById('kpiCompromisosSub').innerText = `${fullData.metadata.total_conciliated_commitments} Compromisos Conciliados`;
+
+  if (fullData.adquisiciones_kpis) {
+    const kpisAdq = fullData.adquisiciones_kpis;
+    const kpiClavesEl = document.getElementById('kpiClavesTotal');
+    if (kpiClavesEl) kpiClavesEl.innerText = `${kpisAdq.total_claves_vinculadas_count.toLocaleString('es-MX')} Claves`;
+    
+    const kpiClavesSubEl = document.getElementById('kpiClavesMontoSub');
+    if (kpiClavesSubEl) kpiClavesSubEl.innerText = `${formatCurrency(kpisAdq.monto_total_claves_vinculadas)} en ${kpisAdq.contratos_con_claves_count} contratos`;
+    
+    const countBadgeEl = document.getElementById('clavesCountBadge');
+    if (countBadgeEl) countBadgeEl.innerText = kpisAdq.total_claves_vinculadas_count.toLocaleString('es-MX');
+  }
 }
 
 function renderCharts() {
@@ -453,13 +510,27 @@ function renderTable() {
     const isExpanded = expandedContracts.has(c.contrato);
     const badgeClass = c.estatus === 'SOBRA RECURSO' ? 'badge-sobra' : (c.estatus === 'FALTA RECURSO' ? 'badge-falta' : 'badge-equilibrado');
 
+    let provCell = `<td title="${c.proveedor}" style="max-width: 220px; overflow: hidden; text-overflow: ellipsis;">
+      <div style="font-weight: 600;">${c.proveedor}</div>`;
+    if (c.adquisicion_metadata && c.adquisicion_metadata.rfc && c.adquisicion_metadata.rfc !== 'N/A') {
+      provCell += `<div style="font-size:0.7rem; color:var(--text-muted);">RFC: ${c.adquisicion_metadata.rfc}</div>`;
+    }
+    if (c.claves_adquiridas_count > 0) {
+      provCell += `<div style="margin-top: 3px;">
+        <span class="badge-clave" onclick="event.stopPropagation(); openClavesModal('${c.contrato}')" title="Haz clic para ver el catálogo de ${c.claves_adquiridas_count} claves">
+          💊 ${c.claves_adquiridas_count} claves
+        </span>
+      </div>`;
+    }
+    provCell += `</td>`;
+
     html += `
       <tr class="contract-row" onclick="toggleContract('${c.contrato}')" data-contrato="${c.contrato}">
         <td style="text-align: center;">
           <button class="btn-toggle">${isExpanded ? '▼' : '▶'}</button>
         </td>
         <td><strong>${c.contrato}</strong></td>
-        <td title="${c.proveedor}" style="max-width: 220px; overflow: hidden; text-overflow: ellipsis;">${c.proveedor}</td>
+        ${provCell}
         <td style="text-align: center;"><span class="badge" style="background:#334155; color:#fff;">${c.folios_count}</span></td>
         <td style="text-align: right;">${formatCurrency(c.modificado_sicop)}</td>
         <td style="text-align: right;">${formatCurrency(c.modificado_inper)}</td>
@@ -474,10 +545,30 @@ function renderTable() {
     `;
 
     if (isExpanded) {
+      const hasMeta = c.adquisicion_metadata && c.adquisicion_metadata.procedimiento !== 'N/A';
+      
       html += `
         <tr>
           <td colspan="13" style="padding: 0;">
             <div class="subtable-container">
+              ${hasMeta ? `
+                <div style="background:#0f172a; border: 1px solid #334155; border-radius:8px; padding:10px 14px; margin-bottom: 12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                  <div>
+                    <div style="font-size:0.78rem; font-weight:800; color:#c084fc;">📋 METADATOS DE ADQUISICIÓN Y CONTRATACIÓN (MADRE 3.3)</div>
+                    <div style="font-size:0.78rem; color:#cbd5e1; margin-top:3px;">
+                      <strong>Procedimiento:</strong> ${c.adquisicion_metadata.procedimiento} | 
+                      <strong>Administrador:</strong> ${c.adquisicion_metadata.administrador} | 
+                      <strong>SIFGO:</strong> <span style="color:#34d399; font-weight:700;">${c.adquisicion_metadata.sifgo}</span>
+                    </div>
+                  </div>
+                  ${c.claves_adquiridas_count > 0 ? `
+                    <button class="btn-export" style="background:#8b5cf6; color:#fff; border:none; padding:5px 12px; font-size:0.78rem; border-radius:6px; cursor:pointer;" onclick="openClavesModal('${c.contrato}')">
+                      💊 Explorar ${c.claves_adquiridas_count} Claves Adquiridas
+                    </button>
+                  ` : ''}
+                </div>
+              ` : ''}
+
               <div class="subtable-header">
                 <span>📑</span> COMPROMISOS DEL CONTRATO ${c.contrato} (${c.compromisos.length} FOLIOS)
               </div>
@@ -531,6 +622,216 @@ function renderTable() {
               <td colspan="12" style="padding: 0;">
                 <div style="background: #111827; padding: 10px 16px 14px 40px;">
                   <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; margin-bottom: 6px;">
+                    📌 DESGLOSE DE PARTIDAS PRESUPUESTALES SICOP (FOLIO ${comp.folio})
+                  </div>
+                  <table class="sub-table" style="background: #1f2937;">
+                    <thead>
+                      <tr style="background: #111827;">
+                        <th>Fila Excel</th>
+                        <th>PTDA</th>
+                        <th>Clave Programática (F-FN-SF-RG-AI-PP)</th>
+                        <th>Bien o Servicio Desglosado</th>
+                        <th style="text-align: right;">Modificado SICOP</th>
+                        <th style="text-align: right;">Pagado SICOP</th>
+                        <th style="text-align: right; color: var(--color-sicop);">Disponible SICOP</th>
+                        <th>Observaciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+          `;
+
+          comp.partidas.forEach(p => {
+            html += `
+              <tr>
+                <td>Row ${p.row_id}</td>
+                <td><strong style="color: #60a5fa;">${p.ptda}</strong></td>
+                <td style="font-family: monospace; font-size: 0.75rem;">${p.clave_programatica}</td>
+                <td title="${p.bien_servicio}" style="max-width: 240px; overflow: hidden; text-overflow: ellipsis;">${p.bien_servicio}</td>
+                <td style="text-align: right;">${formatCurrency(p.modificado_sicop)}</td>
+                <td style="text-align: right;">${formatCurrency(p.pagado_sicop)}</td>
+                <td style="text-align: right; font-weight: 600; color: var(--color-sicop);">${formatCurrency(p.disponible_sicop)}</td>
+                <td style="font-size: 0.75rem; color: #94a3b8;">${p.observaciones || ''}</td>
+              </tr>
+            `;
+          });
+
+          html += `
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+            </tr>
+          `;
+        }
+      });
+
+      html += `
+                </tbody>
+              </table>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+  });
+
+  tbody.innerHTML = html;
+}
+
+window.openClavesModal = function(contractNumber) {
+  if (!fullData || !fullData.contracts) return;
+  const contract = fullData.contracts.find(c => c.contrato === contractNumber);
+  if (!contract || !contract.claves_adquiridas || contract.claves_adquiridas.length === 0) {
+    alert(`No se encontraron claves de insumos desglosadas para el contrato ${contractNumber}.`);
+    return;
+  }
+
+  const modal = document.getElementById('clavesModal');
+  const titleEl = document.getElementById('clavesModalTitle');
+  const bodyEl = document.getElementById('clavesModalBody');
+
+  titleEl.innerHTML = `💊 Catálogo de Claves Adquiridas — Contrato ${contract.contrato} (${contract.proveedor})`;
+
+  let html = `
+    <div style="margin-bottom: 16px; background: #0f172a; border: 1px solid #334155; padding: 14px 18px; border-radius: 8px;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 0.85rem;">
+        <div><strong>Proveedor:</strong> ${contract.proveedor}</div>
+        <div><strong>RFC:</strong> ${contract.rfc}</div>
+        <div><strong>Procedimiento:</strong> ${contract.adquisicion_metadata.procedimiento}</div>
+        <div><strong>Administrador:</strong> ${contract.adquisicion_metadata.administrador}</div>
+        <div><strong>Estatus SIFGO:</strong> <span style="color:#34d399; font-weight:700;">${contract.adquisicion_metadata.sifgo}</span></div>
+        <div><strong>Total Claves:</strong> <span style="color:#c084fc; font-weight:800;">${contract.claves_adquiridas_count} claves</span></div>
+      </div>
+    </div>
+
+    <table class="exec-table">
+      <thead>
+        <tr>
+          <th>Clave Almacén</th>
+          <th>Clave CNIS / CUCOP+</th>
+          <th>Concepto / Descripción del Medicamento o Insumo</th>
+          <th>Unidad</th>
+          <th style="text-align: right;">Precio Unitario</th>
+          <th style="text-align: center;">Cant. Máx.</th>
+          <th style="text-align: right; color: #c084fc;">Monto Máx. con IVA</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  contract.claves_adquiridas.forEach(cl => {
+    let pClass = 'partida-other';
+    if (cl.clave_cucop.startsWith('25301')) pClass = 'partida-25301';
+    else if (cl.clave_cucop.startsWith('25101')) pClass = 'partida-25101';
+    else if (cl.clave_cucop.startsWith('25401')) pClass = 'partida-25401';
+    else if (cl.clave_cucop.startsWith('25501')) pClass = 'partida-25501';
+
+    html += `
+      <tr>
+        <td><strong style="color: #38bdf8;">${cl.clave_almacen}</strong></td>
+        <td>
+          <span class="partida-tag ${pClass}">${cl.clave_cucop}</span>
+          ${cl.clave_cnis && cl.clave_cnis !== 'N/A' ? `<div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">CNIS: ${cl.clave_cnis}</div>` : ''}
+        </td>
+        <td style="max-width: 320px; word-wrap: break-word;">${cl.concepto}</td>
+        <td>${cl.unidad_medida}</td>
+        <td style="text-align: right;">${formatCurrency(cl.precio_unitario)}</td>
+        <td style="text-align: center;">${cl.cantidad_maxima.toLocaleString('es-MX')}</td>
+        <td style="text-align: right; font-weight: 700; color: #c084fc;">${formatCurrency(cl.monto_maximo_con_iva)}</td>
+      </tr>
+    `;
+  });
+
+  html += `
+      </tbody>
+    </table>
+  `;
+
+  bodyEl.innerHTML = html;
+  modal.style.display = 'flex';
+};
+
+function renderClavesTable() {
+  if (!fullData || !fullData.contracts) return;
+
+  const tbody = document.getElementById('clavesTableBody');
+  if (!tbody) return;
+
+  // Flatten all claves from conciliated contracts
+  let allClaves = [];
+  fullData.contracts.forEach(c => {
+    if (c.claves_adquiridas && c.claves_adquiridas.length > 0) {
+      c.claves_adquiridas.forEach(cl => {
+        allClaves.push({
+          contrato: c.contrato,
+          proveedor: c.proveedor,
+          ...cl
+        });
+      });
+    }
+  });
+
+  // Apply search query & partida filter
+  const filtered = allClaves.filter(cl => {
+    if (currentPartidaFilter !== 'ALL') {
+      if (!cl.clave_cucop.startsWith(currentPartidaFilter)) return false;
+    }
+
+    if (currentClavesSearchQuery) {
+      const q = currentClavesSearchQuery;
+      const matchConcepto = cl.concepto.toLowerCase().includes(q);
+      const matchCucop = cl.clave_cucop.toLowerCase().includes(q);
+      const matchCnis = cl.clave_cnis.toLowerCase().includes(q);
+      const matchAlmacen = cl.clave_almacen.toLowerCase().includes(q);
+      const matchContrato = cl.contrato.toLowerCase().includes(q);
+      const matchProv = cl.proveedor.toLowerCase().includes(q);
+
+      if (!matchConcepto && !matchCucop && !matchCnis && !matchAlmacen && !matchContrato && !matchProv) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const countEl = document.getElementById('lblClavesRecordCount');
+  if (countEl) countEl.innerText = filtered.length.toLocaleString('es-MX');
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">No se encontraron claves con los criterios de búsqueda.</td></tr>`;
+    return;
+  }
+
+  let html = '';
+  filtered.forEach(cl => {
+    let pClass = 'partida-other';
+    if (cl.clave_cucop.startsWith('25301')) pClass = 'partida-25301';
+    else if (cl.clave_cucop.startsWith('25101')) pClass = 'partida-25101';
+    else if (cl.clave_cucop.startsWith('25401')) pClass = 'partida-25401';
+    else if (cl.clave_cucop.startsWith('25501')) pClass = 'partida-25501';
+
+    html += `
+      <tr>
+        <td>
+          <strong style="color: #60a5fa; cursor:pointer;" onclick="openClavesModal('${cl.contrato}')">${cl.contrato}</strong>
+          <div style="font-size:0.7rem; color:var(--text-muted); max-width: 140px; overflow:hidden; text-overflow:ellipsis;">${cl.proveedor}</div>
+        </td>
+        <td><strong style="color: #38bdf8;">${cl.clave_almacen}</strong></td>
+        <td>
+          <span class="partida-tag ${pClass}">${cl.clave_cucop}</span>
+          ${cl.clave_cnis && cl.clave_cnis !== 'N/A' ? `<div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">CNIS: ${cl.clave_cnis}</div>` : ''}
+        </td>
+        <td style="max-width: 320px; word-wrap: break-word;">${cl.concepto}</td>
+        <td>${cl.unidad_medida}</td>
+        <td style="text-align: right;">${formatCurrency(cl.precio_unitario)}</td>
+        <td style="text-align: center;">${cl.cantidad_maxima.toLocaleString('es-MX')}</td>
+        <td style="text-align: right; font-weight: 700; color: #c084fc;">${formatCurrency(cl.monto_maximo_con_iva)}</td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = html;
+}
                     📌 DESGLOSE DE PARTIDAS PRESUPUESTALES SICOP (FOLIO ${comp.folio})
                   </div>
                   <table class="sub-table" style="background: #1f2937;">

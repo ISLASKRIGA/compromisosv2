@@ -2,8 +2,25 @@ import pandas as pd
 import numpy as np
 import json
 import os
+import re
 
-def process_excel(excel_path, output_json_path):
+def _contrato_short(c_num):
+    """Extracts NNN/YYYY from extended format NNN-AAAA-BB/YYYY for secondary lookup."""
+    m = re.match(r'^(\d+)-[\d]+-[\d]+/(\d{4})$', c_num)
+    if m:
+        return f'{int(m.group(1)):03d}/{m.group(2)}'
+    return None
+
+def to_float(val):
+    try:
+        if pd.isna(val):
+            return 0.0
+        v_str = str(val).replace('$', '').replace(',', '').strip()
+        return float(v_str)
+    except:
+        return 0.0
+
+def process_excel(excel_path, output_json_path, madre_excel_path=None):
     print(f"Cargando nueva base maestra Excel: {excel_path}")
     xls = pd.ExcelFile(excel_path)
     
@@ -12,6 +29,96 @@ def process_excel(excel_path, output_json_path):
     df_detalle = pd.read_excel(xls, 'Base origen detalle')
     df_pendientes = pd.read_excel(xls, 'Pendientes vinculación')
     df_control = pd.read_excel(xls, 'Control validación')
+
+    # -------------------------------------------------------------
+    # 0. CARGAR BASE DE ADQUISICIONES Y CLAVES (Madre 3.3.xlsx)
+    # -------------------------------------------------------------
+    madre_principal_map = {}
+    madre_claves_map = {}
+    total_claves_madre_count = 0
+    monto_total_claves_madre = 0.0
+
+    if madre_excel_path and os.path.exists(madre_excel_path):
+        print(f"Cargando base de Adquisiciones y Claves: {madre_excel_path}")
+        try:
+            xls_madre = pd.ExcelFile(madre_excel_path)
+            
+            # 0.1 Mapear pestaña Principal (Metadatos de Contrato y Proveedor)
+            sheet_p_name = 'Pricipal ' if 'Pricipal ' in xls_madre.sheet_names else ('Principal' if 'Principal' in xls_madre.sheet_names else xls_madre.sheet_names[0])
+            df_p_raw = pd.read_excel(xls_madre, sheet_p_name, header=2)
+            
+            for idx, r in df_p_raw.iterrows():
+                c_val = r.get('No. de Contrato') or r.get('No. de Contrato.1')
+                if pd.isna(c_val):
+                    continue
+                c_num = str(c_val).strip()
+                if not c_num or c_num == 'nan' or c_num == 'No. de Contrato':
+                    continue
+                
+                prov = str(r.get('Razón Social')).strip() if pd.notna(r.get('Razón Social')) else 'N/A'
+                rfc = str(r.get('RFC')).strip() if pd.notna(r.get('RFC')) else 'N/A'
+                proc = str(r.get('Procedimiento')).strip() if pd.notna(r.get('Procedimiento')) else 'N/A'
+                adm = str(r.get('Administrador del Contrato')).strip() if pd.notna(r.get('Administrador del Contrato')) else 'N/A'
+                sifgo = str(r.get('SIFGO')).strip() if pd.notna(r.get('SIFGO')) else 'N/A'
+                besa = str(r.get('Besa')).strip() if pd.notna(r.get('Besa')) else 'N/A'
+                tipo_proc = str(r.get('Tipo de Procedimiento')).strip() if pd.notna(r.get('Tipo de Procedimiento')) else 'N/A'
+                
+                f_inicio = str(r.get('Fecha de Inicio')).split()[0] if pd.notna(r.get('Fecha de Inicio')) else 'N/A'
+                f_fin = str(r.get('Fecha de Fin')).split()[0] if pd.notna(r.get('Fecha de Fin')) else 'N/A'
+
+                madre_principal_map[c_num] = {
+                    'proveedor': prov,
+                    'rfc': rfc,
+                    'procedimiento': proc,
+                    'tipo_procedimiento': tipo_proc,
+                    'administrador': adm,
+                    'sifgo': sifgo,
+                    'besa': besa,
+                    'fecha_inicio': f_inicio,
+                    'fecha_fin': f_fin
+                }
+
+            # 0.2 Mapear pestaña Claves (Catálogo de insumos/medicamentos desglosados)
+            if 'Claves' in xls_madre.sheet_names:
+                df_c_raw = pd.read_excel(xls_madre, 'Claves', header=1)
+                for idx, r in df_c_raw.iterrows():
+                    c_num = str(r.get('Contrato')).strip() if pd.notna(r.get('Contrato')) else ''
+                    if not c_num or c_num == 'nan' or c_num == 'Contrato':
+                        continue
+                    
+                    c_almacen = str(r.get('Clave de almacén')).strip().replace('.0', '') if pd.notna(r.get('Clave de almacén')) else 'Sin clave'
+                    cnis = str(r.get('Clave CNIS')).strip() if pd.notna(r.get('Clave CNIS')) else 'N/A'
+                    cucop = str(r.get('Clave CUCOP +')).strip() if pd.notna(r.get('Clave CUCOP +')) else (str(r.get('Clave CUCOP')).strip() if pd.notna(r.get('Clave CUCOP')) else 'N/A')
+                    concepto = str(r.get('Concepto de la clave')).strip() if pd.notna(r.get('Concepto de la clave')) else 'N/A'
+                    unidad = str(r.get('Unidad de medida')).strip() if pd.notna(r.get('Unidad de medida')) else 'N/A'
+                    
+                    pu = to_float(r.get('Precio unitario'))
+                    cant_max = to_float(r.get('Cantidad máxima'))
+                    monto_max_raw = r.get('Monto máximo de cada clave con IVA')
+                    monto_max = to_float(monto_max_raw) if pd.notna(monto_max_raw) else (pu * cant_max)
+                    if monto_max == 0.0 and pu > 0 and cant_max > 0:
+                        monto_max = pu * cant_max
+
+                    if c_num not in madre_claves_map:
+                        madre_claves_map[c_num] = []
+                    
+                    madre_claves_map[c_num].append({
+                        'clave_almacen': c_almacen,
+                        'clave_cnis': cnis,
+                        'clave_cucop': cucop,
+                        'concepto': concepto,
+                        'unidad_medida': unidad,
+                        'precio_unitario': pu,
+                        'cantidad_maxima': cant_max,
+                        'monto_maximo_con_iva': monto_max
+                    })
+
+                    total_claves_madre_count += 1
+                    monto_total_claves_madre += monto_max
+                    
+            print(f"Metadatos de {len(madre_principal_map)} contratos y {total_claves_madre_count} claves mapeados desde Madre 3.3")
+        except Exception as e:
+            print(f"Advertencia: Ocurrió un error al procesar Madre 3.3.xlsx: {e}")
 
     total_partidas_count = len(df_detalle)
     
@@ -115,6 +222,10 @@ def process_excel(excel_path, output_json_path):
     count_sobra = 0
     count_equilibrado = 0
     count_falta = 0
+    
+    total_claves_vinculadas_count = 0
+    monto_total_claves_vinculadas = 0.0
+    contratos_con_claves_count = 0
 
     for idx, r in df_resumen.iterrows():
         c_name = str(r['Contrato']).strip()
@@ -145,6 +256,41 @@ def process_excel(excel_path, output_json_path):
             match_det = df_detalle[df_detalle['Contrato heredado para conciliación'].astype(str).str.strip() == c_name]
             if not match_det.empty and pd.notna(match_det.iloc[0]['Proveedor']):
                 prov = str(match_det.iloc[0]['Proveedor']).strip()
+
+        # Enriquecer con metadatos de Madre 3.3 (exact match + secondary by NNN/YYYY)
+        meta_adquisicion = madre_principal_map.get(c_name)
+        if meta_adquisicion is None:
+            short_key = _contrato_short(c_name)
+            if short_key:
+                meta_adquisicion = madre_principal_map.get(short_key)
+        if meta_adquisicion is None:
+            meta_adquisicion = {
+                'proveedor': 'N/A',
+                'rfc': 'N/A',
+                'procedimiento': 'N/A',
+                'tipo_procedimiento': 'N/A',
+                'administrador': 'N/A',
+                'sifgo': 'N/A',
+                'besa': 'N/A',
+                'fecha_inicio': 'N/A',
+                'fecha_fin': 'N/A'
+            }
+        
+        if prov == 'N/A' and meta_adquisicion['proveedor'] != 'N/A':
+            prov = meta_adquisicion['proveedor']
+            
+        rfc_val = meta_adquisicion['rfc']
+        
+        # Claves pertenecientes a este contrato (exact match + secondary by NNN/YYYY)
+        claves_list = madre_claves_map.get(c_name, [])
+        if not claves_list:
+            short_key = _contrato_short(c_name)
+            if short_key:
+                claves_list = madre_claves_map.get(short_key, [])
+        if claves_list:
+            contratos_con_claves_count += 1
+            total_claves_vinculadas_count += len(claves_list)
+            monto_total_claves_vinculadas += sum(item['monto_maximo_con_iva'] for item in claves_list)
                 
         cobertura_pct = float(r['Cobertura %']) if pd.notna(r['Cobertura %']) else ((at / av * 100.0) if av > 0 else (100.0 if (at == 0 and av == 0) else None))
 
@@ -154,7 +300,7 @@ def process_excel(excel_path, output_json_path):
             'solicitante': 'N/A',
             'servicio': serv,
             'proveedor': prov,
-            'rfc': 'N/A',
+            'rfc': rfc_val,
             'folios_count': folios_cnt,
             'partidas_count': sum(len(c['partidas']) for c in comps),
             'modificado_sicop': ak,
@@ -168,6 +314,9 @@ def process_excel(excel_path, output_json_path):
             'suficiencia': suf,
             'estatus': estatus,
             'cobertura_pct': cobertura_pct,
+            'adquisicion_metadata': meta_adquisicion,
+            'claves_adquiridas_count': len(claves_list),
+            'claves_adquiridas': claves_list,
             'compromisos': comps
         })
 
@@ -225,6 +374,7 @@ def process_excel(excel_path, output_json_path):
     dataset = {
         'metadata': {
             'excel_source': 'Base_Maestra_Corregida_SICOP_INPer.xlsx',
+            'madre_source': 'Madre 3.3.xlsx',
             'total_rows': total_partidas_count,
             'total_conciliated_contracts': len(contracts_list),
             'total_conciliated_commitments': len(df_maestra),
@@ -253,6 +403,14 @@ def process_excel(excel_path, output_json_path):
             'pagado_sicop': sum(c['pagado_sicop'] for c in contracts_list),
             'pagado_inper': sum(c['pagado_inper'] for c in contracts_list)
         },
+        'adquisiciones_kpis': {
+            'total_claves_madre_count': total_claves_madre_count,
+            'monto_total_claves_madre': monto_total_claves_madre,
+            'contratos_con_metadatos_count': len(madre_principal_map),
+            'contratos_con_claves_count': contratos_con_claves_count,
+            'total_claves_vinculadas_count': total_claves_vinculadas_count,
+            'monto_total_claves_vinculadas': monto_total_claves_vinculadas
+        },
         'contracts': contracts_list,
         'unlinked_resources': unlinked_details,
         'audit': {
@@ -268,15 +426,20 @@ def process_excel(excel_path, output_json_path):
     with open(output_json_path, 'w', encoding='utf-8') as f:
         json.dump(dataset, f, ensure_ascii=False, indent=2)
         
-    print(f"data.json generado exitosamente desde {excel_path}")
+    print(f"data.json generado exitosamente desde {excel_path} y {madre_excel_path}")
     print("\n--- MASTER BASE CONTROL VALUES ---")
     print(f"Disponible SICOP Conciliado: ${tot_at:,.2f}")
     print(f"Estimación INPer Conciliado: ${tot_av:,.2f}")
     print(f"Saldo Suficiencia Conciliado: ${suf_global:,.2f}")
     print(f"AT Sin Folio: ${unlinked_at:,.2f}")
     print(f"AV Sin Folio: ${unlinked_av:,.2f}")
+    print(f"\n--- ADQUISICIONES CONTROL VALUES ---")
+    print(f"Claves Vinculadas a Contratos: {total_claves_vinculadas_count} ({contratos_con_claves_count} contratos)")
+    print(f"Monto Total en Claves Vinculadas: ${monto_total_claves_vinculadas:,.2f}")
 
 if __name__ == '__main__':
     excel_file = r'c:\Users\chuch\.gemini\antigravity\playground\compromisosv2\Base_Maestra_Corregida_SICOP_INPer.xlsx'
+    madre_file = r'c:\Users\chuch\.gemini\antigravity\playground\compromisosv2\Madre 3.3.xlsx'
     json_file = r'c:\Users\chuch\.gemini\antigravity\playground\compromisosv2\data.json'
-    process_excel(excel_file, json_file)
+    process_excel(excel_file, json_file, madre_file)
+

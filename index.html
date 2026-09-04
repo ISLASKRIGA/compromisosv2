@@ -79,6 +79,9 @@
       <button class="tab-btn" data-tab="audit">
         ⚠️ Registros que Requieren Revisión <span id="auditCountBadge" class="badge-count">0</span>
       </button>
+      <button class="tab-btn" data-tab="claves" style="border-bottom-color: #a855f7;">
+        💊 Claves Adquiridas (Madre 3.3) <span id="clavesCountBadge" class="badge-count" style="background:#a855f7; color:#fff;">1,188</span>
+      </button>
     </div>
 
     <!-- TAB 1: DASHBOARD & TABLE -->
@@ -120,6 +123,12 @@
           <div class="kpi-label">Universo Conciliado</div>
           <div id="kpiTotalContratos" class="kpi-value">0</div>
           <div id="kpiCompromisosSub" class="kpi-subtext">0 Compromisos Conciliados</div>
+        </div>
+
+        <div id="cardClavesAdquiridas" class="kpi-card clickable-card" style="border-left: 4px solid #a855f7;" title="Haz clic para explorar la base de datos de claves e insumos (Madre 3.3)">
+          <div class="kpi-label">Claves Adquiridas (Madre 3.3)</div>
+          <div id="kpiClavesTotal" class="kpi-value" style="color: #c084fc;">1,188 Claves</div>
+          <div id="kpiClavesMontoSub" class="kpi-subtext">$81,684,600.07 en 277 contratos</div>
         </div>
       </div>
 
@@ -296,7 +305,84 @@
 
     </div>
 
+    <!-- TAB 4: CATÁLOGO DE CLAVES ADQUIRIDAS (MADRE 3.3) -->
+    <div id="tabClaves" style="display: none;">
+      
+      <div class="conclusion-card" style="border-left-color: #a855f7;">
+        <div class="conclusion-header">
+          <div class="conclusion-title" style="color: #c084fc;">
+            <span>💊</span> BASE DE DATOS DE CLAVES Y MEDICAMENTOS ADQUIRIDOS POR CONTRATO (MADRE 3.3)
+          </div>
+          <div id="clavesSummaryBadge" class="conclusion-badge badge-sobra" style="background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid #a855f7;">
+            3,479 CLAVES TOTALES | 1,188 VINCULADAS ($81.68M)
+          </div>
+        </div>
+        <div class="conclusion-body">
+          <p>
+            Catálogo desglosado de insumos médicos, farmacéuticos y sustancias químicas adquiridas a través de los contratos formalizados en el INPer.
+          </p>
+        </div>
+      </div>
+
+      <!-- Claves Filter Bar -->
+      <div class="filter-bar">
+        <div class="search-box-container" style="flex: 1; max-width: 400px; margin-bottom: 0;">
+          <input type="text" id="clavesSearchInput" class="search-input" placeholder="🔍 Buscar por medicina, clave CNIS, CUCOP, almacén o contrato...">
+        </div>
+
+        <div class="filter-group">
+          <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Partida:</span>
+          <button class="filter-btn active" data-partida="ALL">Todas</button>
+          <button class="filter-btn" data-partida="25301">💊 25301 Medicamentos</button>
+          <button class="filter-btn" data-partida="25101">🧪 25101 Reactivos</button>
+          <button class="filter-btn" data-partida="25401">🩹 25401 Curación</button>
+          <button class="filter-btn" data-partida="25501">🧫 25501 Lab.</button>
+        </div>
+
+        <div style="font-size: 0.85rem; color: var(--text-muted);">
+          Mostrando <strong id="lblClavesRecordCount" style="color: #c084fc;">0</strong> claves
+        </div>
+      </div>
+
+      <!-- Claves Table -->
+      <div class="table-container">
+        <table class="exec-table">
+          <thead>
+            <tr>
+              <th>No. Contrato</th>
+              <th>Clave Almacén</th>
+              <th>Clave CNIS / CUCOP+</th>
+              <th>Concepto / Descripción del Insumo</th>
+              <th>Unidad</th>
+              <th style="text-align: right;">Precio Unitario</th>
+              <th style="text-align: center;">Cant. Máx.</th>
+              <th style="text-align: right; color: #c084fc;">Monto Máx. con IVA</th>
+            </tr>
+          </thead>
+          <tbody id="clavesTableBody">
+            <!-- Dynamic rows injected by JS -->
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
   </main>
+
+  <!-- Modal for Contract Claves Inspection -->
+  <div id="clavesModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div id="clavesModalTitle" class="modal-title">
+          💊 Claves Adquiridas por Contrato
+        </div>
+        <button id="closeClavesModal" class="modal-close-btn">&times;</button>
+      </div>
+      <div id="clavesModalBody" class="modal-body">
+        <!-- Content injected by JS -->
+      </div>
+    </div>
+  </div>
 
   <!-- Application Logic -->
   <script src="app.js"></script>
