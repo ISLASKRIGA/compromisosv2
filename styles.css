@@ -856,3 +856,30 @@ body {
 .partida-25501 { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; }
 .partida-other { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; border: 1px solid #64748b; }
 
+/* Wrapping cell for long text (overrides global nowrap) */
+.exec-table td.cell-wrap,
+.sub-table td.cell-wrap {
+  white-space: normal !important;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 300px;
+  min-width: 140px;
+  vertical-align: top;
+  line-height: 1.45;
+}
+
+/* Claves table fixed layout to prevent column squishing */
+.claves-table {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 1000px;
+}
+.claves-table th:nth-child(1) { width: 130px; }
+.claves-table th:nth-child(2) { width: 90px; }
+.claves-table th:nth-child(3) { width: 130px; }
+.claves-table th:nth-child(4) { width: auto; }
+.claves-table th:nth-child(5) { width: 80px; }
+.claves-table th:nth-child(6) { width: 110px; }
+.claves-table th:nth-child(7) { width: 90px; }
+.claves-table th:nth-child(8) { width: 120px; }
+

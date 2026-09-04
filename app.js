@@ -704,16 +704,16 @@ window.openClavesModal = function(contractNumber) {
       </div>
     </div>
 
-    <table class="exec-table">
+    <table class="exec-table" style="table-layout:fixed; min-width:800px;">
       <thead>
         <tr>
-          <th>Clave Almacén</th>
-          <th>Clave CNIS / CUCOP+</th>
+          <th style="width:90px;">Clave Almacén</th>
+          <th style="width:130px;">Clave CNIS / CUCOP+</th>
           <th>Concepto / Descripción del Medicamento o Insumo</th>
-          <th>Unidad</th>
-          <th style="text-align: right;">Precio Unitario</th>
-          <th style="text-align: center;">Cant. Máx.</th>
-          <th style="text-align: right; color: #c084fc;">Monto Máx. con IVA</th>
+          <th style="width:75px;">Unidad</th>
+          <th style="width:110px; text-align: right;">Precio Unitario</th>
+          <th style="width:85px; text-align: center;">Cant. Máx.</th>
+          <th style="width:120px; text-align: right; color: #c084fc;">Monto Máx. con IVA</th>
         </tr>
       </thead>
       <tbody>
@@ -733,11 +733,11 @@ window.openClavesModal = function(contractNumber) {
           <span class="partida-tag ${pClass}">${cl.clave_cucop}</span>
           ${cl.clave_cnis && cl.clave_cnis !== 'N/A' ? `<div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">CNIS: ${cl.clave_cnis}</div>` : ''}
         </td>
-        <td style="max-width: 320px; word-wrap: break-word;">${cl.concepto}</td>
-        <td>${cl.unidad_medida}</td>
-        <td style="text-align: right;">${formatCurrency(cl.precio_unitario)}</td>
-        <td style="text-align: center;">${cl.cantidad_maxima.toLocaleString('es-MX')}</td>
-        <td style="text-align: right; font-weight: 700; color: #c084fc;">${formatCurrency(cl.monto_maximo_con_iva)}</td>
+        <td class="cell-wrap" title="${cl.concepto}">${cl.concepto}</td>
+        <td style="white-space: nowrap;">${cl.unidad_medida}</td>
+        <td style="text-align: right; white-space: nowrap;">${formatCurrency(cl.precio_unitario)}</td>
+        <td style="text-align: center; white-space: nowrap;">${cl.cantidad_maxima.toLocaleString('es-MX')}</td>
+        <td style="text-align: right; font-weight: 700; color: #c084fc; white-space: nowrap;">${formatCurrency(cl.monto_maximo_con_iva)}</td>
       </tr>
     `;
   });
@@ -821,11 +821,11 @@ function renderClavesTable() {
           <span class="partida-tag ${pClass}">${cl.clave_cucop}</span>
           ${cl.clave_cnis && cl.clave_cnis !== 'N/A' ? `<div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">CNIS: ${cl.clave_cnis}</div>` : ''}
         </td>
-        <td style="max-width: 320px; word-wrap: break-word;">${cl.concepto}</td>
-        <td>${cl.unidad_medida}</td>
-        <td style="text-align: right;">${formatCurrency(cl.precio_unitario)}</td>
-        <td style="text-align: center;">${cl.cantidad_maxima.toLocaleString('es-MX')}</td>
-        <td style="text-align: right; font-weight: 700; color: #c084fc;">${formatCurrency(cl.monto_maximo_con_iva)}</td>
+        <td class="cell-wrap" title="${cl.concepto}">${cl.concepto}</td>
+        <td style="white-space: nowrap;">${cl.unidad_medida}</td>
+        <td style="text-align: right; white-space: nowrap;">${formatCurrency(cl.precio_unitario)}</td>
+        <td style="text-align: center; white-space: nowrap;">${cl.cantidad_maxima.toLocaleString('es-MX')}</td>
+        <td style="text-align: right; font-weight: 700; color: #c084fc; white-space: nowrap;">${formatCurrency(cl.monto_maximo_con_iva)}</td>
       </tr>
     `;
   });
