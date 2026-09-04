@@ -234,8 +234,14 @@ function getFilteredContracts() {
       const matchServicio = c.servicio.toLowerCase().includes(q);
       const matchUR = c.ur.toLowerCase().includes(q);
       const matchFolio = c.compromisos.some(comp => comp.folio.toLowerCase().includes(q));
+      const matchClave = c.claves_adquiridas && c.claves_adquiridas.some(cl =>
+        cl.concepto.toLowerCase().includes(q) ||
+        cl.clave_almacen.toLowerCase().includes(q) ||
+        cl.clave_cnis.toLowerCase().includes(q) ||
+        cl.clave_cucop.toLowerCase().includes(q)
+      );
 
-      if (!matchContrato && !matchProveedor && !matchServicio && !matchUR && !matchFolio) {
+      if (!matchContrato && !matchProveedor && !matchServicio && !matchUR && !matchFolio && !matchClave) {
         return false;
       }
     }
@@ -270,6 +276,28 @@ function renderAll() {
 }
 
 function renderTableAndKPIs() {
+  if (currentSearchQuery) {
+    // Auto-expand claves for contracts that match via medication/clave search
+    if (fullData && fullData.contracts) {
+      const q = currentSearchQuery;
+      fullData.contracts.forEach(c => {
+        const matchesByClave = c.claves_adquiridas && c.claves_adquiridas.some(cl =>
+          cl.concepto.toLowerCase().includes(q) ||
+          cl.clave_almacen.toLowerCase().includes(q) ||
+          cl.clave_cnis.toLowerCase().includes(q) ||
+          cl.clave_cucop.toLowerCase().includes(q)
+        );
+        if (matchesByClave) {
+          expandedContracts.add(c.contrato);
+          expandedClaves.add(c.contrato);
+        }
+      });
+    }
+  } else {
+    // Clear auto-expanded claves when search is cleared
+    expandedClaves.clear();
+    expandedContracts.clear();
+  }
   renderTable();
   renderKPIs();
   renderCharts();
