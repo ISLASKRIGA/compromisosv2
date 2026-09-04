@@ -8,6 +8,7 @@ let currentSortCol = 'suficiencia';
 let currentSortAsc = false; // Default desc for numeric columns
 let expandedContracts = new Set();
 let expandedCommitments = new Set();
+let expandedClaves = new Set();
 
 let chartSufficiency = null;
 let chartDistribution = null;
@@ -516,9 +517,10 @@ function renderTable() {
       provCell += `<div style="font-size:0.7rem; color:var(--text-muted);">RFC: ${c.adquisicion_metadata.rfc}</div>`;
     }
     if (c.claves_adquiridas_count > 0) {
+      const clavesOpen = expandedClaves.has(c.contrato);
       provCell += `<div style="margin-top: 3px;">
-        <span class="badge-clave" onclick="event.stopPropagation(); openClavesModal('${c.contrato}')" title="Haz clic para ver el catálogo de ${c.claves_adquiridas_count} claves">
-          💊 ${c.claves_adquiridas_count} claves
+        <span class="badge-clave" onclick="event.stopPropagation(); toggleClaves('${c.contrato}')" title="Haz clic para ${clavesOpen ? 'ocultar' : 'desplegar'} las ${c.claves_adquiridas_count} claves adquiridas">
+          💊 ${c.claves_adquiridas_count} claves ${clavesOpen ? '▼' : '▶'}
         </span>
       </div>`;
     }
@@ -562,8 +564,8 @@ function renderTable() {
                     </div>
                   </div>
                   ${c.claves_adquiridas_count > 0 ? `
-                    <button class="btn-export" style="background:#8b5cf6; color:#fff; border:none; padding:5px 12px; font-size:0.78rem; border-radius:6px; cursor:pointer;" onclick="openClavesModal('${c.contrato}')">
-                      💊 Explorar ${c.claves_adquiridas_count} Claves Adquiridas
+                    <button class="btn-export" style="background:#8b5cf6; color:#fff; border:none; padding:5px 12px; font-size:0.78rem; border-radius:6px; cursor:pointer;" onclick="toggleClaves('${c.contrato}')">
+                      💊 ${expandedClaves.has(c.contrato) ? 'Ocultar' : 'Ver'} ${c.claves_adquiridas_count} Claves Adquiridas
                     </button>
                   ` : ''}
                 </div>
@@ -668,6 +670,59 @@ function renderTable() {
       html += `
                 </tbody>
               </table>
+      `;
+
+      if (expandedClaves.has(c.contrato) && c.claves_adquiridas && c.claves_adquiridas.length > 0) {
+        html += `
+          <div style="margin-top:16px; border-top:1px solid #334155; padding-top:14px;">
+            <div class="subtable-header" style="color:#c084fc; margin-bottom:8px;">
+              <span>💊</span> CLAVES ADQUIRIDAS — CONTRATO ${c.contrato} (${c.claves_adquiridas_count} CLAVES | ${formatCurrency(c.claves_adquiridas.reduce((s,cl)=>s+cl.monto_maximo_con_iva,0))})
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="sub-table" style="table-layout:fixed; min-width:860px;">
+                <thead>
+                  <tr style="background:#0f172a;">
+                    <th style="width:90px;">Clave Almacén</th>
+                    <th style="width:130px;">CNIS / CUCOP+</th>
+                    <th>Concepto del Insumo</th>
+                    <th style="width:75px;">Unidad</th>
+                    <th style="width:105px; text-align:right;">P. Unitario</th>
+                    <th style="width:85px; text-align:center;">Cant. Máx.</th>
+                    <th style="width:120px; text-align:right; color:#c084fc;">Monto Máx. IVA</th>
+                  </tr>
+                </thead>
+                <tbody>
+        `;
+        c.claves_adquiridas.forEach(cl => {
+          let pClass = 'partida-other';
+          if (cl.clave_cucop.startsWith('25301')) pClass = 'partida-25301';
+          else if (cl.clave_cucop.startsWith('25101')) pClass = 'partida-25101';
+          else if (cl.clave_cucop.startsWith('25401')) pClass = 'partida-25401';
+          else if (cl.clave_cucop.startsWith('25501')) pClass = 'partida-25501';
+          html += `
+                  <tr>
+                    <td><strong style="color:#38bdf8;">${cl.clave_almacen}</strong></td>
+                    <td>
+                      <span class="partida-tag ${pClass}" style="font-size:0.68rem;">${cl.clave_cucop}</span>
+                      ${cl.clave_cnis && cl.clave_cnis !== 'N/A' ? `<div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">CNIS: ${cl.clave_cnis}</div>` : ''}
+                    </td>
+                    <td class="cell-wrap" title="${cl.concepto}" style="font-size:0.78rem;">${cl.concepto}</td>
+                    <td style="white-space:nowrap;">${cl.unidad_medida}</td>
+                    <td style="text-align:right;white-space:nowrap;">${formatCurrency(cl.precio_unitario)}</td>
+                    <td style="text-align:center;white-space:nowrap;">${cl.cantidad_maxima.toLocaleString('es-MX')}</td>
+                    <td style="text-align:right;font-weight:700;color:#c084fc;white-space:nowrap;">${formatCurrency(cl.monto_maximo_con_iva)}</td>
+                  </tr>
+          `;
+        });
+        html += `
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      html += `
             </div>
           </td>
         </tr>
@@ -813,7 +868,7 @@ function renderClavesTable() {
     html += `
       <tr>
         <td>
-          <strong style="color: #60a5fa; cursor:pointer;" onclick="openClavesModal('${cl.contrato}')">${cl.contrato}</strong>
+          <strong style="color: #60a5fa;">${cl.contrato}</strong>
           <div style="font-size:0.7rem; color:var(--text-muted); max-width: 140px; overflow:hidden; text-overflow:ellipsis;">${cl.proveedor}</div>
         </td>
         <td><strong style="color: #38bdf8;">${cl.clave_almacen}</strong></td>
@@ -847,6 +902,16 @@ window.toggleCommitment = function(compKey) {
     expandedCommitments.delete(compKey);
   } else {
     expandedCommitments.add(compKey);
+  }
+  renderTable();
+};
+
+window.toggleClaves = function(contrato) {
+  if (expandedClaves.has(contrato)) {
+    expandedClaves.delete(contrato);
+  } else {
+    expandedClaves.add(contrato);
+    expandedContracts.add(contrato);
   }
   renderTable();
 };
