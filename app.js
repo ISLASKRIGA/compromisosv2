@@ -832,61 +832,6 @@ function renderClavesTable() {
 
   tbody.innerHTML = html;
 }
-                    📌 DESGLOSE DE PARTIDAS PRESUPUESTALES SICOP (FOLIO ${comp.folio})
-                  </div>
-                  <table class="sub-table" style="background: #1f2937;">
-                    <thead>
-                      <tr style="background: #111827;">
-                        <th>Fila Excel</th>
-                        <th>PTDA</th>
-                        <th>Clave Programática (F-FN-SF-RG-AI-PP)</th>
-                        <th>Bien o Servicio Desglosado</th>
-                        <th style="text-align: right;">Modificado SICOP</th>
-                        <th style="text-align: right;">Pagado SICOP</th>
-                        <th style="text-align: right; color: var(--color-sicop);">Disponible SICOP</th>
-                        <th>Observaciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-          `;
-
-          comp.partidas.forEach(ptda => {
-            html += `
-              <tr>
-                <td>Row ${ptda.row_id}</td>
-                <td><strong>${ptda.ptda}</strong></td>
-                <td><code>${ptda.clave_programatica}</code></td>
-                <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${ptda.bien_servicio}</td>
-                <td style="text-align: right;">${formatCurrency(ptda.modificado_sicop)}</td>
-                <td style="text-align: right;">${formatCurrency(ptda.pagado_sicop)}</td>
-                <td style="text-align: right; font-weight: 600; color: var(--color-sicop);">${formatCurrency(ptda.disponible_sicop)}</td>
-                <td style="font-size: 0.75rem; color: var(--text-muted);">${ptda.observaciones || '-'}</td>
-              </tr>
-            `;
-          });
-
-          html += `
-                    </tbody>
-                  </table>
-                </div>
-              </td>
-            </tr>
-          `;
-        }
-      });
-
-      html += `
-                </tbody>
-              </table>
-            </div>
-          </td>
-        </tr>
-      `;
-    }
-  });
-
-  tbody.innerHTML = html;
-}
 
 window.toggleContract = function(contrato) {
   if (expandedContracts.has(contrato)) {
