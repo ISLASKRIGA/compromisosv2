@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tablero Ejecutivo 2026 — INPer ante CCINSHAE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-base: #0a0f1d; --bg-surface: #111827; --bg-card: #1f293d;
+      --border-color: rgba(255,255,255,0.08); --text-main: #f3f4f6; --text-muted: #9ca3af;
+      --primary: #4f46e5; --accent-emerald: #10b981; --accent-amber: #f59e0b; --accent-rose: #f43f5e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg-base); color: var(--text-main); line-height: 1.5; padding-bottom: 3rem; }
+    header { background: rgba(17,24,39,0.9); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 50; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    .brand { display: flex; align-items: center; gap: 1rem; }
+    .logo-badge { background: linear-gradient(135deg, #4f46e5, #06b6d4); width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-family: 'Outfit', sans-serif; color: #fff; font-size: 1.2rem; }
+    .brand-text h1 { font-family: 'Outfit', sans-serif; font-size: 1.2rem; color: #fff; }
+    .brand-text p { font-size: 0.8rem; color: var(--text-muted); }
+    .tag-badge { background: rgba(99,102,241,0.15); color: #a5b4fc; padding: 0.3rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem; }
+    main { max-width: 1500px; margin: 0 auto; padding: 1.5rem 2rem; }
+    .tabs-nav { display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1.5rem; }
+    .tab-btn { background: transparent; border: none; color: var(--text-muted); font-family: 'Outfit'; font-size: 0.95rem; font-weight: 600; padding: 0.65rem 1.25rem; border-radius: 8px; cursor: pointer; }
+    .tab-btn.active { color: #fff; background: rgba(79,70,229,0.3); border: 1px solid rgba(99,102,241,0.4); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem; }
+    .kpi-card { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 14px; padding: 1.25rem; position: relative; overflow: hidden; }
+    .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--c, #4f46e5); }
+    .kpi-title { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem; }
+    .kpi-value { font-family: 'Outfit'; font-size: 1.75rem; font-weight: 700; color: #fff; margin-bottom: 0.25rem; }
+    .kpi-sub { font-size: 0.8rem; color: var(--text-muted); }
+    .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
+    .chart-card { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 14px; padding: 1.25rem; }
+    .chart-card h3 { font-family: 'Outfit'; font-size: 1.05rem; color: #fff; margin-bottom: 1rem; }
+    .table-container { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 14px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+    thead { background: rgba(31,41,61,0.7); }
+    th { padding: 0.85rem 1rem; font-family: 'Outfit'; color: var(--text-muted); text-transform: uppercase; font-size: 0.72rem; }
+    td { padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    tbody tr:hover { background: #26354f; }
+    .badge { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 6px; font-size: 0.72rem; font-weight: 600; }
+    .badge-success { background: rgba(16,185,129,0.15); color: #34d399; }
+    .badge-warning { background: rgba(245,158,11,0.15); color: #fbbf24; }
+    .badge-danger { background: rgba(244,63,94,0.15); color: #fb7185; }
+    .badge-info { background: rgba(6,182,212,0.15); color: #38bdf8; }
+    .badge-purple { background: rgba(139,92,246,0.15); color: #c084fc; }
+    .defense-box { background: rgba(79,70,229,0.1); border: 1px solid rgba(99,102,241,0.3); border-radius: 14px; padding: 1.25rem; margin-bottom: 1.5rem; }
+    .defense-box h4 { font-family: 'Outfit'; font-size: 1.1rem; color: #fff; margin-bottom: 0.75rem; }
+    .defense-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .defense-item { background: rgba(17,24,39,0.6); border: 1px solid var(--border-color); border-radius: 10px; padding: 1rem; }
+    .defense-item h5 { font-family: 'Outfit'; color: #a5b4fc; margin-bottom: 0.35rem; font-size: 0.9rem; }
+    .defense-item p { font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo-badge">INP</div>
+      <div class="brand-text">
+        <h1>Instituto Nacional de Perinatología "Isidro Espinosa de los Reyes"</h1>
+        <p>Dirección de Administración y Finanzas — Presentación Oficial ante CCINSHAE</p>
+      </div>
+    </div>
+    <div>
+      <span class="tag-badge">UR: NDE</span>
+      <span class="tag-badge" style="background:rgba(16,185,129,0.15);color:#6ee7b7;">Corte: 07-Sep-2026</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="tabs-nav">
+      <button class="tab-btn active" onclick="openTab('resumen', this)">📊 Tablero Ejecutivo</button>
+      <button class="tab-btn" onclick="openTab('anexos', this)">📁 Anexos CCINSHAE</button>
+      <button class="tab-btn" onclick="openTab('modificatorios', this)">⚖️ Convenios Modificatorios</button>
+      <button class="tab-btn" onclick="openTab('argumentacion', this)">🛡️ Argumentación de Cierre</button>
+    </div>
+
+    <!-- TAB 1: RESUMEN -->
+    <div id="tab-resumen" class="tab-content active">
+      <div class="kpi-grid">
+        <div class="kpi-card" style="--c:#6366f1;">
+          <div class="kpi-title">Presupuesto Modificado</div>
+          <div class="kpi-value">$860,015,100</div>
+          <div class="kpi-sub"><span class="badge badge-info">52 Objetos de Gasto</span> 07.09.2026.xlsx</div>
+        </div>
+        <div class="kpi-card" style="--c:#10b981;">
+          <div class="kpi-title">Presupuesto Ejercido</div>
+          <div class="kpi-value">$693,350,718</div>
+          <div class="kpi-sub"><span class="badge badge-success">80.6% Avance</span> Ritmo óptimo</div>
+        </div>
+        <div class="kpi-card" style="--c:#06b6d4;">
+          <div class="kpi-title">Saldo Disponible</div>
+          <div class="kpi-value">$165,618,243</div>
+          <div class="kpi-sub"><span class="badge badge-info">Cap 1000: $97.2M (Aguinaldos)</span></div>
+        </div>
+        <div class="kpi-card" style="--c:#f59e0b;">
+          <div class="kpi-title">Compromiso por Ejercer</div>
+          <div class="kpi-value">$278,708,299</div>
+          <div class="kpi-sub"><span class="badge badge-warning">Techo Máximo CCINSHAE</span> Consumo real: 75-85%</div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3>Distribución por Capítulo (Mdp)</h3>
+          <div style="height:260px;"><canvas id="cCaps"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Compromisos por Anexo CCINSHAE (Mdp)</h3>
+          <div style="height:260px;"><canvas id="cAnx"></canvas></div>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <div style="padding:1rem; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between;">
+          <h3 style="font-family:'Outfit'; font-size:1rem; color:#fff;">Top 5 Proveedores con Mayor Compromiso por Ejercer</h3>
+          <span class="badge badge-warning">Seguimiento de Cierre</span>
+        </div>
+        <table>
+          <thead><tr><th>Proveedor</th><th>Bien / Servicio</th><th>Monto Máximo</th><th>Pagado</th><th>Por Ejercer</th><th>Prioridad</th></tr></thead>
+          <tbody>
+            <tr><td><strong>POR DEFINIR</strong> (Licitaciones en fallo)</td><td>Mantenimiento electromédico / Insumos urgentes</td><td>$91,488,952.00</td><td>$0.00</td><td style="color:#fbbf24; font-weight:700;">$63,311,294.07</td><td><span class="badge badge-danger">CRÍTICA</span></td></tr>
+            <tr><td><strong>LOGISTICA MARVIL SA DE CV</strong></td><td>Servicio Integral de Farmacia Intrahospitalaria</td><td>$87,029,550.00</td><td>$13,507,893.00</td><td style="color:#fbbf24; font-weight:700;">$30,006,882.86</td><td><span class="badge badge-danger">CRÍTICA</span></td></tr>
+            <tr><td><strong>GRUPO TECNO-REAL S.A. DE C.V.</strong></td><td>Servicios de Limpieza, Lavandería e Higiene</td><td>$201,399,007.00</td><td>$15,363,012.00</td><td style="color:#fbbf24; font-weight:700;">$23,582,076.65</td><td><span class="badge badge-warning">ALTA</span></td></tr>
+            <tr><td><strong>DISTRIBUIDORA DISUR, S.A. DE C.V.</strong></td><td>Medicamentos y Soluciones Intravenosas</td><td>$35,928,000.00</td><td>$12,475,000.00</td><td style="color:#fbbf24; font-weight:700;">$17,465,000.14</td><td><span class="badge badge-danger">CRÍTICA</span></td></tr>
+            <tr><td><strong>BIODIST S A DE C V</strong></td><td>Pruebas Especializadas de Tamizaje Neonatal</td><td>$62,130,380.00</td><td>$12,732,419.00</td><td style="color:#fbbf24; font-weight:700;">$11,718,963.03</td><td><span class="badge badge-danger">CRÍTICA</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 2: ANEXOS -->
+    <div id="tab-anexos" class="tab-content">
+      <div class="defense-box">
+        <h4>📁 Desglose Institucional por Anexo Técnico CCINSHAE</h4>
+        <p style="color:var(--text-muted); font-size:0.85rem;">Estructura oficial del Reporte Ejecutivo de Cierre (902 renglones analizados).</p>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Anexo</th><th>Descripción</th><th>Regs</th><th>Techo Contractual</th><th>Compromiso SICOP</th><th>Pagado</th><th>Por Ejercer</th></tr></thead>
+          <tbody>
+            <tr><td><span class="badge badge-info">Anexo 1.1</span></td><td>Medicamentos — Compra Consolidada</td><td>151</td><td>$26,222,294.17</td><td>$3,677,582.00</td><td>$1,466,869.00</td><td style="color:#fbbf24;">$6,469,682.61</td></tr>
+            <tr><td><span class="badge badge-info">Anexo 1.2</span></td><td>Medicamentos — Compra Directa</td><td>1</td><td>$18,068,360.98</td><td>$0.00</td><td>$0.00</td><td style="color:#fbbf24;">$18,068,360.98</td></tr>
+            <tr><td><span class="badge badge-success">Anexo 2.1</span></td><td>Material de Curación — Consolidada</td><td>48</td><td>$4,641,624.00</td><td>$0.00</td><td>$0.00</td><td style="color:#fbbf24;">$831,331.38</td></tr>
+            <tr><td><span class="badge badge-success">Anexo 2.2</span></td><td>Material de Curación — Directa</td><td>26</td><td>$47,252,358.00</td><td>$0.00</td><td>$0.00</td><td style="color:#fbbf24;">$18,917,303.16</td></tr>
+            <tr><td><span class="badge badge-purple">Anexo 3</span></td><td>Servicios Integrales de Salud</td><td>19</td><td>$199,503,713.00</td><td>$55,585,767.00</td><td>$31,911,982.00</td><td style="color:#fbbf24; font-weight:700;">$76,783,559.18</td></tr>
+            <tr><td><span class="badge badge-warning">Anexo 4</span></td><td>Mantenimiento de Equipo Médico</td><td>41</td><td>$17,133,183.00</td><td>$0.00</td><td>$0.00</td><td style="color:#fbbf24;">$16,861,657.75</td></tr>
+            <tr><td><span class="badge badge-danger">Anexo 5</span></td><td>Servicios Generales Operativos</td><td>14</td><td>$23,483,161.00</td><td>$0.00</td><td>$0.00</td><td style="color:#fbbf24;">$20,230,143.93</td></tr>
+            <tr><td><span class="badge badge-info">Otros</span></td><td>Refacciones e Instrumental</td><td>8</td><td>$2,620,974.00</td><td>$0.00</td><td>$0.00</td><td style="color:#fbbf24;">$2,620,972.96</td></tr>
+            <tr style="background:rgba(255,255,255,0.03);"><td><span class="badge">Sin Anexo</span></td><td>Contratos Directos y Suministros</td><td>594</td><td>$1,102,740,878.00</td><td>$240,073,905.00</td><td>$124,099,352.66</td><td style="color:#fbbf24;">$117,925,286.94</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 3: MODIFICATORIOS -->
+    <div id="tab-modificatorios" class="tab-content">
+      <div class="defense-box">
+        <h4>⚖️ Conciliación: Archivo Madre 3.3 vs. Reporte Ejecutivo</h4>
+        <div class="defense-grid">
+          <div class="defense-item">
+            <h5>Padrón Madre 3.3 (1,161 Contratos)</h5>
+            <p>1 fila por contrato. Marca con bandera: <code>Modificatorio = SI</code> sin desglosar montos de cada adenda.</p>
+          </div>
+          <div class="defense-item">
+            <h5>Reporte Ejecutivo (139 CM / 48 CM1-CM2)</h5>
+            <p>Desglosa cada adenda formalizada por <strong>$362.2 Mdp</strong> para auditar vigencias ampliadas de 2024-2025 hacia 2026.</p>
+          </div>
+          <div class="defense-item">
+            <h5>Contratos Plurianuales en Seguimiento</h5>
+            <p>Baxter, Fresenius Medical Care, AstraZeneca, Sharp y Mainbit garantizan continuidad operativa.</p>
+          </div>
+        </div>
+      </div>
+      <div class="table-container">
+        <div style="padding:1rem;"><h3 style="font-family:'Outfit'; font-size:1rem; color:#fff;">Muestra de Contratos con Convenio Modificatorio (CM)</h3></div>
+        <table>
+          <thead><tr><th>Contrato Reporte</th><th>Contrato Madre Base</th><th>Proveedor</th><th>Partida</th><th>Monto</th><th>Vínculo</th></tr></thead>
+          <tbody>
+            <tr><td><code>097-2000-60/2024 CM1</code></td><td>097-2000-60/2024</td><td>Fresenius Medical Care de México SA de CV</td><td>25401</td><td>$2,168,100.00</td><td><span class="badge badge-purple">Contrato Base</span></td></tr>
+            <tr><td><code>097-2000-60/2024 CM2</code></td><td>097-2000-60/2024</td><td>Fresenius Medical Care de México SA de CV</td><td>25401</td><td>$4,336,200.00</td><td><span class="badge badge-purple">Contrato Base</span></td></tr>
+            <tr><td><code>103/2025 CM1</code></td><td>103/2025</td><td>AstraZeneca SA de CV</td><td>25301</td><td>$1,845,000.00</td><td><span class="badge badge-purple">Contrato Base</span></td></tr>
+            <tr><td><code>104/2025 CM1</code></td><td>104/2025</td><td>Baxter SA de CV</td><td>25301</td><td>$954,200.00</td><td><span class="badge badge-purple">Contrato Base</span></td></tr>
+            <tr><td><code>117/2025 CM1</code></td><td>117/2025</td><td>Fresenius Kabi México SA de CV</td><td>25301</td><td>$3,210,500.00</td><td><span class="badge badge-purple">Contrato Base</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 4: ARGUMENTACION -->
+    <div id="tab-argumentacion" class="tab-content">
+      <div class="defense-box">
+        <h4>🛡️ Guía de Sustentación para la Directora ante la CCINSHAE</h4>
+        <div class="defense-grid">
+          <div class="defense-item">
+            <h5>1. ¿Por qué el pendiente ($278.7M) supera el disponible ($165.6M)?</h5>
+            <p>El 88% de los contratos son abiertos. El sistema computa el techo máximo. Históricamente se ejerce entre 75% y 85% ($155M - $170M reales), ajustándose a la disponibilidad.</p>
+          </div>
+          <div class="defense-item">
+            <h5>2. ¿Cómo se financian medicamentos y suministros médicos (25x)?</h5>
+            <p>Con asignaciones de recursos propios (cuotas de recuperación) y proyectos de investigación especializada (PP Q008) autorizados por la Ley de los Institutos Nacionales de Salud.</p>
+          </div>
+          <div class="defense-item">
+            <h5>3. ¿Qué son los $63.3M etiquetados "POR DEFINIR"?</h5>
+            <p>Licitaciones en fallo para conservación de incubadoras de terapia intensiva neonatal y mantenimiento electromédico preventivo.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function openTab(id, btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      if(btn) btn.classList.add('active');
+      document.getElementById('tab-' + id).classList.add('active');
+    }
+
+    function init() {
+      new Chart(document.getElementById('cCaps'), {
+        type: 'bar',
+        data: {
+          labels: ['Cap 1000 - Personales', 'Cap 2000 - Insumos', 'Cap 3000 - Servicios'],
+          datasets: [
+            { label: 'Modificado', data: [644.48, 5.85, 207.98], backgroundColor: 'rgba(99,102,241,0.4)', borderColor: '#6366f1', borderWidth: 1 },
+            { label: 'Ejercido', data: [547.23, 3.68, 141.14], backgroundColor: 'rgba(16,185,129,0.5)', borderColor: '#10b981', borderWidth: 1 }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#9ca3af' } } } }
+      });
+
+      new Chart(document.getElementById('cAnx'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Servicios Integrales', 'Medicamentos', 'Servicios Generales', 'Curación', 'Mantenimiento', 'Directos'],
+          datasets: [{ data: [76.78, 24.54, 20.23, 19.75, 16.86, 120.54], backgroundColor: ['#8b5cf6', '#06b6d4', '#f43f5e', '#10b981', '#f59e0b', '#4f46e5'], borderWidth: 0 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#9ca3af' } } } }
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => { init(); });
+  </script>
+</body>
+</html>
