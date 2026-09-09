@@ -164,6 +164,16 @@ body {
   text-decoration: none;
 }
 
+.btn-export-pdf {
+  background: linear-gradient(135deg, #78091e 0%, #9c1232 100%);
+}
+
+.btn-export-pdf:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .btn-export:hover {
   opacity: 0.95;
   transform: translateY(-1px);

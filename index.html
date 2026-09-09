@@ -13,6 +13,10 @@
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+  <!-- jsPDF + AutoTable para exportar PDF membretado -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
   <!-- Stylesheet -->
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -41,6 +45,10 @@
 
         <button id="btnExportReporte" class="btn-export btn-export-secondary" title="Descargar el Reporte Ejecutivo Validado (Pruebareporteejecutivo_validado_PCOM_CM_correcto.xlsx)">
           📑 Descargar Reporte Ejecutivo (.xlsx)
+        </button>
+
+        <button id="btnExportPDF" class="btn-export btn-export-pdf" title="Descargar Reporte Ejecutivo en PDF con hoja membretada INPer">
+          📄 Descargar PDF Membretado
         </button>
 
         <a href="https://compromisosinpe.netlify.app/" target="_blank" rel="noopener noreferrer" id="btnErrores" class="btn-export btn-export-warning" title="Ir a compromisosinpe.netlify.app">
@@ -386,5 +394,6 @@
 
   <!-- Application Logic -->
   <script src="app.js"></script>
+  <script src="pdf_report.js"></script>
 </body>
 </html>

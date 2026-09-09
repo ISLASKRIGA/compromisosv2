@@ -439,7 +439,7 @@ def process_excel(excel_path, output_json_path, madre_excel_path=None):
 
 if __name__ == '__main__':
     excel_file = r'c:\Users\chuch\.gemini\antigravity\playground\compromisosv2\Base_Maestra_Corregida_SICOP_INPer.xlsx'
-    madre_file = r'c:\Users\chuch\.gemini\antigravity\playground\compromisosv2\Madre 3.3.xlsx'
+    madre_file = r'c:\Users\chuch\.gemini\antigravity\playground\compromisosv2\Madre 3.3 (1).xlsx'
     json_file = r'c:\Users\chuch\.gemini\antigravity\playground\compromisosv2\data.json'
     process_excel(excel_file, json_file, madre_file)
 

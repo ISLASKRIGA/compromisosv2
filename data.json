@@ -33,7 +33,7 @@
   "adquisiciones_kpis": {
     "total_claves_madre_count": 3479,
     "monto_total_claves_madre": 198185167.4053602,
-    "contratos_con_metadatos_count": 1156,
+    "contratos_con_metadatos_count": 1159,
     "contratos_con_claves_count": 365,
     "total_claves_vinculadas_count": 1458,
     "monto_total_claves_vinculadas": 96248427.2972
@@ -34506,7 +34506,7 @@
       "solicitante": "N/A",
       "servicio": "MATERIAL DE CURACIÓN PARA DIVERSAS ÁREAS DEL INSTITUTO",
       "proveedor": "ABASTECEDOR TERAPEUTICO, S.A. DE C.V.",
-      "rfc": "N/A",
+      "rfc": "ATE8803043P7",
       "folios_count": 1,
       "partidas_count": 1,
       "modificado_sicop": 72224.31,
@@ -34521,15 +34521,15 @@
       "estatus": "EQUILIBRADO",
       "cobertura_pct": 100.0,
       "adquisicion_metadata": {
-        "proveedor": "N/A",
-        "rfc": "N/A",
-        "procedimiento": "N/A",
-        "tipo_procedimiento": "N/A",
-        "administrador": "N/A",
-        "sifgo": "N/A",
-        "besa": "N/A",
-        "fecha_inicio": "N/A",
-        "fecha_fin": "N/A"
+        "proveedor": "ABASTECEDOR TERAPEUTICO SA DE CV",
+        "rfc": "ATE8803043P7",
+        "procedimiento": "AA-12-NDE-012NDE001-N-104-2026",
+        "tipo_procedimiento": "Adjudicacion Directa",
+        "administrador": "Dra. Silvia Romero Maldonado",
+        "sifgo": "Cargado",
+        "besa": "EN SEGUIMIENTO",
+        "fecha_inicio": "2026-06-18",
+        "fecha_fin": "2026-12-31"
       },
       "claves_adquiridas_count": 3,
       "claves_adquiridas": [
@@ -45597,11 +45597,11 @@
       "estatus": "EQUILIBRADO",
       "cobertura_pct": 100.0,
       "adquisicion_metadata": {
-        "proveedor": "GRUPO RAVER APLICACIONES SA DE CV",
+        "proveedor": "GRUPO RAVER APLICACIONES, S.A. DE C.V.",
         "rfc": "GRA210208IA7",
         "procedimiento": "AA-12-NDE-012NDE001-N-130-2026",
         "tipo_procedimiento": "Adjudicacion Directa",
-        "administrador": "Dra. Claudia Verónica Zaga Clavellina",
+        "administrador": "Dra. Claudia Verónica Zaga",
         "sifgo": "Cargado",
         "besa": "EN CAPTURA",
         "fecha_inicio": "2026-06-25",
