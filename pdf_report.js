@@ -184,7 +184,7 @@ async function generarPDFMembretado() {
         4: { cellWidth: 30, halign: 'right' },
         5: { cellWidth: 30, halign: 'right' },
       },
-      margin: { left: mL, right: mR, bottom: mBot },
+      margin: { top: mTop, left: mL, right: mR, bottom: mBot },
       willDrawPage: (data) => {
         if (data.pageNumber > 1) addBg();
       },
